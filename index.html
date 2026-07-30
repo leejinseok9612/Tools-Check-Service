@@ -252,7 +252,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 <!-- PAGE: SCAN -->
 <div class="page on" id="page-scan">
   <div id="scannerBox">
-    <video id="qrVideo" playsinline autoplay muted></video>
+    <video id="qrVideo" playsinline muted x5-playsinline webkit-playsinline></video>
     <canvas id="qrCanvas"></canvas>
     <div id="scanOverlay">
       <div class="sc-corner tl"></div><div class="sc-corner tr"></div>
@@ -974,7 +974,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       showToast('이 브라우저는 카메라를 지원하지 않아요'); return;
     }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    // iOS Safari: ideal 사용 (exact 쓰면 일부 기기서 실패)
+    var constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+    navigator.mediaDevices.getUserMedia(constraints)
+      .catch(function() {
+        // 후면 카메라 실패 시 기본 카메라로 재시도
+        return navigator.mediaDevices.getUserMedia({ video: true });
+      })
       .then(function(stream) {
         qrStream = stream;
         qrVideo.srcObject = stream;
@@ -982,11 +988,25 @@ document.addEventListener('DOMContentLoaded', function() {
         btnStart.style.display = 'none';
         btnStop.style.display = 'block';
         scanStatus.textContent = '📷 QR코드를 카메라에 맞춰주세요';
-        document.querySelector('.sc-main') && (document.querySelector('.sc-main').style.display = 'none');
-        qrVideo.onloadedmetadata = function() { qrVideo.play(); scanQRLoop(); };
+        // iOS Safari: canplay 이벤트가 더 안정적
+        var started = false;
+        function onReady() {
+          if (started) return;
+          started = true;
+          var p = qrVideo.play();
+          if (p && p.then) {
+            p.then(function() { scanQRLoop(); }).catch(function(e) { showToast('영상 재생 오류: ' + e.message); });
+          } else {
+            scanQRLoop();
+          }
+        }
+        qrVideo.addEventListener('canplay', onReady, { once: true });
+        qrVideo.addEventListener('loadeddata', onReady, { once: true });
+        // 2초 안에 이벤트 안 오면 강제 시작
+        setTimeout(function() { onReady(); }, 2000);
       })
       .catch(function(err) {
-        showToast('카메라 권한을 허용해주세요');
+        showToast('카메라 권한을 허용해주세요 (' + (err.message || err.name) + ')');
       });
   }
 
