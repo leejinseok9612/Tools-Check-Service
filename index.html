@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>공도구 점검 관리</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  font-family: -apple-system, 'Noto Sans KR', sans-serif;
+  background: #F0F2F5; font-size: 15px; color: #1A1A1A;
+  -webkit-text-size-adjust: 100%; overflow-x: hidden;
+}
+#header {
+  position: sticky; top: 0; z-index: 100;
+  background: #1565C0; color: #fff; padding: 13px 15px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+#header h1 { flex:1; font-size:16px; font-weight:700; }
+#header p  { font-size:11px; opacity:.75; margin-top:1px; }
+#btnAdmin {
+  background: rgba(255,255,255,0.2); border: none; color: #fff;
+  padding: 8px 13px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+#btnAdmin.on { background: #FFD54F; color: #333; }
+#tabbar {
+  display: flex; background: #fff; border-bottom: 2px solid #E0E0E0;
+  position: sticky; top: 56px; z-index: 99;
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 10px 4px; cursor: pointer; color: #888;
+  font-size: 11px; font-weight: 500; border-bottom: 3px solid transparent;
+}
+.tab .ti { font-size: 20px; margin-bottom: 2px; }
+.tab.on { color: #1565C0; border-bottom-color: #1565C0; font-weight: 700; }
+.page { display: none; padding: 14px; padding-bottom: 30px; }
+.page.on { display: block; }
+.card { background: #fff; border-radius: 14px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card-hd { font-size:11px; font-weight:700; color:#888; margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px; }
+#scannerBox {
+  background: #111; border-radius: 16px; height: 180px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; margin-bottom: 14px; cursor: pointer;
+}
+.sc-corner { position:absolute; width:40px; height:40px; border:3px solid #2196F3; }
+.tl{top:18px;left:18px;border-right:none;border-bottom:none;border-radius:5px 0 0 0;}
+.tr{top:18px;right:18px;border-left:none;border-bottom:none;border-radius:0 5px 0 0;}
+.bl{bottom:18px;left:18px;border-right:none;border-top:none;border-radius:0 0 0 5px;}
+.br{bottom:18px;right:18px;border-left:none;border-top:none;border-radius:0 0 5px 0;}
+.sc-line { position:absolute; width:72%; height:2px; background:linear-gradient(90deg,transparent,#2196F3,transparent); animation:scanY 2s ease-in-out infinite; }
+@keyframes scanY { 0%,100%{top:20px} 50%{top:155px} }
+.sc-main { color:rgba(255,255,255,0.9); font-size:14px; font-weight:600; z-index:1; }
+.sc-sub  { color:rgba(255,255,255,0.5); font-size:12px; margin-top:6px; z-index:1; }
+#searchWrap { display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid #E0E0E0; border-radius:12px; padding:0 14px; margin-bottom:10px; }
+#searchWrap span { color:#bbb; font-size:17px; }
+#srchInput { flex:1; border:none; outline:none; font-size:16px; padding:12px 0; background:transparent; color:#1A1A1A; font-family:inherit; }
+#chipWrap { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:12px; scrollbar-width:none; }
+#chipWrap::-webkit-scrollbar { display:none; }
+.chip { padding:6px 14px; border-radius:20px; border:1.5px solid #E0E0E0; font-size:12px; cursor:pointer; white-space:nowrap; background:#fff; font-weight:500; flex-shrink:0; }
+.chip.on { background:#1565C0; color:#fff; border-color:#1565C0; font-weight:700; }
+#toolGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.tc { background:#fff; border:1.5px solid #E0E0E0; border-radius:12px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; text-align:center; cursor:pointer; min-height:108px; justify-content:center; }
+.tc:active { background:#E3F2FD; border-color:#1565C0; }
+.tc .ic{font-size:28px;margin-bottom:7px;} .tc .nm{font-size:13px;font-weight:700;line-height:1.3;} .tc .ct{font-size:10px;color:#888;margin-top:2px;} .tc .cnt{font-size:11px;color:#1565C0;margin-top:4px;font-weight:700;}
+#inspHeader { background:linear-gradient(135deg,#1565C0,#0D47A1); color:#fff; border-radius:14px; padding:14px 15px; margin-bottom:12px; }
+#inspHeader .iname{font-size:18px;font-weight:700;margin-bottom:5px;}
+#inspHeader .imeta{display:flex;gap:7px;flex-wrap:wrap;}
+.ibadge{background:rgba(255,255,255,0.18);padding:3px 8px;border-radius:20px;font-size:11px;}
+#vdrSel { width:100%; padding:14px 38px 14px 14px; border:1.5px solid #E0E0E0; border-radius:11px; font-size:16px; outline:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 13px center; -webkit-appearance:none; appearance:none; color:#1A1A1A; cursor:pointer; font-family:inherit; }
+#vdrSel:focus { border-color:#1565C0; }
+#qtyWrap { display:flex; align-items:center; gap:12px; background:#F8F8F8; border-radius:12px; padding:13px 14px; margin-bottom:12px; }
+#qtyWrap .ql{flex:1;font-size:14px;font-weight:600;}
+.qctrl{display:flex;align-items:center;gap:14px;}
+.qbtn{width:36px;height:36px;border-radius:50%;border:2px solid #1565C0;background:#fff;color:#1565C0;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;}
+#qtyNum{font-size:22px;font-weight:800;color:#1565C0;min-width:30px;text-align:center;}
+.progRow{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px;}
+.progRow span:last-child{color:#1565C0;font-weight:700;}
+.progTrack{background:#EAEAEA;border-radius:4px;height:5px;margin-bottom:14px;}
+.progFill{height:100%;border-radius:4px;background:#1565C0;transition:width .3s;}
+.ci{padding:13px 0;border-bottom:1px solid #F0F0F0;display:flex;align-items:flex-start;gap:10px;}
+.ci:last-child{border-bottom:none;}
+.ci-no{width:22px;height:22px;border-radius:50%;background:#E3F2FD;color:#1565C0;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.ci-txt{flex:1;} .ci-name{font-size:14px;font-weight:600;margin-bottom:2px;} .ci-desc{font-size:11px;color:#888;line-height:1.4;}
+.ci-btns{display:flex;gap:5px;flex-shrink:0;margin-top:1px;}
+.cbtn{padding:7px 11px;border:1.5px solid;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;min-height:36px;display:flex;align-items:center;}
+.cg{border-color:#C8E6C9;color:#2E7D32;} .cg.on{background:#2E7D32;color:#fff;border-color:#2E7D32;}
+.cb{border-color:#FFCDD2;color:#C62828;} .cb.on{background:#C62828;color:#fff;border-color:#C62828;}
+.btn-main{width:100%;padding:15px;background:#1565C0;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit;}
+.btn-main:active{background:#0D47A1;}
+.btn-sub{width:100%;padding:13px;background:#fff;border:1.5px solid #E0E0E0;border-radius:12px;font-size:15px;cursor:pointer;color:#888;margin-top:8px;font-family:inherit;}
+input,select,textarea{font-family:inherit;font-size:16px;}
+.fg{margin-bottom:12px;} .fg label{font-size:12px;color:#888;display:block;margin-bottom:5px;font-weight:600;}
+.fg input{width:100%;padding:12px 13px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:16px;outline:none;color:#1A1A1A;background:#fff;font-family:inherit;}
+.fg input:focus{border-color:#1565C0;}
+.frow{display:flex;gap:7px;margin-bottom:11px;}
+.fsel{flex:1;padding:10px 8px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:13px;outline:none;background:#fff;-webkit-appearance:none;appearance:none;font-family:inherit;color:#1A1A1A;}
+.fsel:focus{border-color:#1565C0;}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
+.si{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.si .sn{font-size:19px;font-weight:800;} .si .sl{font-size:10px;color:#888;margin-top:2px;}
+.rc{background:#fff;border-radius:12px;padding:13px;margin-bottom:9px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:4px solid;}
+.rc.g{border-left-color:#2E7D32;} .rc.b{border-left-color:#C62828;}
+.rc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.rc-nm{font-size:14px;font-weight:700;}
+.rbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;}
+.rbg{background:#E8F5E9;color:#2E7D32;} .rbb{background:#FFEBEE;color:#C62828;}
+.rtags{display:flex;gap:5px;flex-wrap:wrap;}
+.rtag{font-size:11px;color:#888;background:#F4F4F4;padding:3px 8px;border-radius:6px;}
+.rtag-qty{color:#1565C0!important;background:#E3F2FD!important;font-weight:700!important;}
+.rtag-warn{color:#E65100!important;background:#FFF3E0!important;}
+.rdet{display:none;border-top:1px solid #EEE;padding-top:8px;margin-top:8px;}
+.rdet.on{display:block;}
+.drow{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:#888;}
+.drow span:last-child{font-weight:700;}
+.expbtn{width:100%;padding:6px;background:none;border:none;font-size:12px;color:#1565C0;cursor:pointer;margin-top:6px;font-family:inherit;}
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
+.ki{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.ki .kn{font-size:20px;font-weight:800;} .ki .kl{font-size:10px;color:#888;margin-top:2px;}
+.bar-row{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.bar-lbl{font-size:11px;color:#888;width:75px;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{flex:1;background:#EAEAEA;border-radius:4px;height:18px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;color:#fff;font-weight:700;min-width:20px;}
+.bar-val{font-size:11px;width:28px;text-align:right;font-weight:700;}
+.pt{width:100%;border-collapse:collapse;font-size:12px;}
+.pt th{background:#F5F5F5;padding:8px 9px;text-align:left;font-size:11px;color:#888;border-bottom:1.5px solid #E0E0E0;white-space:nowrap;}
+.pt td{padding:8px 9px;border-bottom:1px solid #F5F5F5;}
+.pt tr:last-child td{border-bottom:none;}
+#loginOv{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+#loginOv.on{display:flex;}
+.lbox{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:340px;}
+.lbox h2{font-size:17px;font-weight:700;color:#4A148C;margin-bottom:5px;}
+.lbox p{font-size:13px;color:#888;margin-bottom:18px;}
+#pinInp{width:100%;padding:14px;border:2px solid #E0E0E0;border-radius:12px;font-size:22px;letter-spacing:12px;text-align:center;outline:none;font-weight:700;font-family:monospace;}
+#pinInp:focus{border-color:#4A148C;}
+#pinErr{color:#C62828;font-size:13px;margin-top:7px;display:none;}
+.btn-pin{width:100%;padding:14px;background:#4A148C;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit;}
+.btn-can{width:100%;padding:12px;background:#fff;border:1.5px solid #E0E0E0;border-radius:11px;font-size:14px;cursor:pointer;color:#888;margin-top:8px;font-family:inherit;}
+#adminPg{position:fixed;inset:0;background:#F0F2F5;z-index:300;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch;}
+#adminPg.on{display:block;}
+#adminHd{background:#4A148C;color:#fff;padding:13px 15px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;}
+#adminHd h1{font-size:16px;font-weight:700;flex:1;}
+#btnCloseAdmin{background:rgba(255,255,255,0.18);border:none;color:#fff;padding:8px 13px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}
+#adminTabs{display:flex;background:#fff;border-bottom:1.5px solid #E0E0E0;}
+.atab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;font-size:13px;color:#888;border-bottom:3px solid transparent;font-weight:500;}
+.atab.on{color:#4A148C;border-bottom-color:#4A148C;font-weight:700;}
+.acont{padding:14px;display:none;}
+.acont.on{display:block;}
+.add-row{display:flex;gap:8px;margin-bottom:14px;}
+.add-row input{flex:1;padding:13px 12px;border:1.5px solid #E0E0E0;border-radius:11px;font-size:16px;outline:none;font-family:inherit;color:#1A1A1A;}
+.add-row input:focus{border-color:#4A148C;}
+.btn-add{padding:13px 16px;background:#4A148C;color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.vi{display:flex;align-items:center;background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.07);gap:10px;}
+.vi-nm{flex:1;font-size:14px;font-weight:600;} .vi-cnt{font-size:12px;color:#888;}
+.btn-del{background:#FFEBEE;color:#C62828;border:none;border-radius:9px;padding:8px 13px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;}
+.tacard{background:#fff;border-radius:12px;padding:13px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.ta-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:8px;}
+.ta-icon{font-size:22px;flex-shrink:0;}
+.ta-nm{font-size:13px;font-weight:700;} .ta-cat{font-size:11px;color:#888;margin-top:2px;}
+.ta-acts{display:flex;gap:6px;flex-shrink:0;}
+.btn-edit{background:#E3F2FD;color:#1565C0;border:none;border-radius:9px;padding:8px 11px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit;}
+.ctags{display:flex;flex-wrap:wrap;gap:4px;}
+.ctag{background:#F4F4F4;border-radius:6px;padding:3px 8px;font-size:11px;color:#888;}
+#toolMdOv{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:600;display:none;align-items:flex-end;justify-content:center;}
+#toolMdOv.on{display:flex;}
+#toolMdBox{background:#fff;border-radius:20px 20px 0 0;padding:20px 18px 30px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#toolMdBox h3{font-size:16px;font-weight:700;margin-bottom:14px;}
+.md-fg{margin-bottom:12px;} .md-fg label{font-size:12px;color:#888;display:block;margin-bottom:5px;font-weight:600;}
+.md-fg input,.md-fg select{width:100%;padding:12px 13px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:16px;outline:none;background:#fff;font-family:inherit;}
+.md-fg input:focus,.md-fg select:focus{border-color:#1565C0;}
+.ce-item{display:flex;gap:7px;margin-bottom:8px;}
+.ce-item input{flex:1;}
+.btn-ce-del{background:#fff;border:1.5px solid #FFCDD2;color:#C62828;border-radius:9px;padding:10px 12px;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit;}
+.btn-add-ce{width:100%;padding:11px;background:#E3F2FD;color:#1565C0;border:1.5px dashed #1565C0;border-radius:10px;font-size:14px;cursor:pointer;font-weight:700;margin-bottom:8px;font-family:inherit;}
+.md-acts{display:flex;gap:8px;margin-top:10px;}
+.btn-md-save{flex:1;padding:14px;background:#1565C0;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-md-can{padding:14px 16px;background:#fff;border:1.5px solid #E0E0E0;border-radius:11px;font-size:14px;cursor:pointer;color:#888;font-family:inherit;}
+.set-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.set-card h3{font-size:14px;font-weight:700;margin-bottom:14px;}
+.set-input{width:100%;padding:12px 13px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:16px;outline:none;background:#fff;font-family:inherit;margin-bottom:10px;}
+.set-input:focus{border-color:#4A148C;}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F4F4F4;font-size:14px;}
+.srow:last-child{border-bottom:none;}
+.sval{font-weight:700;color:#1565C0;}
+/* 로딩 오버레이 */
+#loadingOv{position:fixed;inset:0;background:rgba(255,255,255,0.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#loadingOv.hide{display:none;}
+.spinner{width:40px;height:40px;border:4px solid #E3F2FD;border-top-color:#1565C0;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-size:14px;color:#888;font-weight:500;}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(25,25,25,0.92);color:#fff;padding:12px 20px;border-radius:11px;font-size:13px;white-space:nowrap;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center;}
+#toast.on{opacity:1;}
+.empty{text-align:center;padding:40px 0;color:#aaa;}
+.empty .ei{font-size:40px;margin-bottom:10px;}
+.btn-add-tool{width:100%;padding:14px;background:#4A148C;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit;}
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingOv">
+  <div class="spinner"></div>
+  <div class="loading-txt" id="loadingTxt">데이터 불러오는 중...</div>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <div style="flex:1;">
+    <h1>🔧 공도구 점검 관리</h1>
+    <p>업체 · 공도구 · 수량 · 적합여부</p>
+  </div>
+  <button id="btnAdmin">⚙️ 관리자</button>
+</div>
+
+<!-- TABBAR -->
+<div id="tabbar">
+  <div class="tab on" id="tab-scan"><span class="ti">📷</span>QR점검</div>
+  <div class="tab"    id="tab-rec"><span class="ti">📋</span>점검기록</div>
+  <div class="tab"    id="tab-stat"><span class="ti">📊</span>통계</div>
+</div>
+
+<!-- PAGE: SCAN -->
+<div class="page on" id="page-scan">
+  <div id="scannerBox">
+    <div class="sc-corner tl"></div><div class="sc-corner tr"></div>
+    <div class="sc-corner bl"></div><div class="sc-corner br"></div>
+    <div class="sc-line"></div>
+    <div class="sc-main">📷 QR코드 스캔</div>
+    <div class="sc-sub">또는 아래에서 공도구 선택</div>
+  </div>
+  <div id="toolSelWrap">
+    <div id="searchWrap"><span>🔍</span><input type="search" id="srchInput" placeholder="공도구 검색..."></div>
+    <div id="chipWrap"></div>
+    <div id="toolGrid"></div>
+  </div>
+  <div id="inspWrap" style="display:none;">
+    <div id="inspHeader"></div>
+    <div class="card">
+      <div class="card-hd">🏢 업체 선택</div>
+      <select id="vdrSel"><option value="">-- 업체를 선택하세요 --</option></select>
+    </div>
+    <div class="card">
+      <div class="card-hd">📦 점검 수량</div>
+      <div id="qtyWrap">
+        <div class="ql">현장 점검 수량</div>
+        <div class="qctrl">
+          <button class="qbtn" id="qMinus">−</button>
+          <div id="qtyNum">1</div>
+          <button class="qbtn" id="qPlus">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">✅ 점검 항목</div>
+      <div class="progRow"><span id="progLbl">0 / 0 완료</span><span id="progPct">0%</span></div>
+      <div class="progTrack"><div class="progFill" id="progFill" style="width:0%"></div></div>
+      <div id="chkList"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">📝 추가 정보</div>
+      <div class="fg"><label>점검자</label><input type="text" id="inspector" value="김점검"></div>
+      <div class="fg"><label>특이사항</label><input type="text" id="noteInput" placeholder="없음"></div>
+    </div>
+    <button class="btn-main" id="btnSubmit">📤 점검 결과 제출</button>
+    <button class="btn-sub"  id="btnReset">↩ 다시 선택</button>
+  </div>
+</div>
+
+<!-- PAGE: RECORDS -->
+<div class="page" id="page-rec">
+  <div class="frow">
+    <select class="fsel" id="fVdr"><option value="">전체 업체</option></select>
+    <select class="fsel" id="fTool"><option value="">전체 공도구</option></select>
+    <select class="fsel" id="fRes"><option value="">전체</option><option value="양호">✅ 양호</option><option value="불량">❌ 불량</option></select>
+  </div>
+  <div class="sgrid" id="sumGrid"></div>
+  <div id="recList"></div>
+</div>
+
+<!-- PAGE: STATS -->
+<div class="page" id="page-stat">
+  <div class="kgrid">
+    <div class="ki"><div class="kn" id="kTot" style="color:#1565C0;">0</div><div class="kl">총 점검건</div></div>
+    <div class="ki"><div class="kn" id="kQty" style="color:#6A1B9A;">0</div><div class="kl">총 수량</div></div>
+    <div class="ki"><div class="kn" id="kGood" style="color:#2E7D32;">0</div><div class="kl">양호</div></div>
+    <div class="ki"><div class="kn" id="kBad"  style="color:#C62828;">0</div><div class="kl">불량</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">📊 업체 × 공도구 피벗</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="pt" id="pivotTbl"></table></div>
+  </div>
+  <div class="card"><div class="card-hd">🏢 업체별 양호율</div><div id="vChart"></div></div>
+  <div class="card"><div class="card-hd">🔧 공도구별 수량</div><div id="tChart"></div></div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="loginOv">
+  <div class="lbox">
+    <h2>🔐 관리자 로그인</h2>
+    <p>PIN 번호를 입력하세요 (기본: 1234)</p>
+    <input type="password" id="pinInp" maxlength="4" placeholder="••••">
+    <div id="pinErr">PIN이 올바르지 않습니다.</div>
+    <button class="btn-pin" id="btnDoLogin">확인</button>
+    <button class="btn-can" id="btnCancelLogin">취소</button>
+  </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="adminPg">
+  <div id="adminHd"><h1>⚙️ 관리자 모드</h1><button id="btnCloseAdmin">✕ 닫기</button></div>
+  <div id="adminTabs">
+    <div class="atab on" id="atab-vdr">🏢 업체관리</div>
+    <div class="atab"    id="atab-tl">🔧 공도구관리</div>
+    <div class="atab"    id="atab-cfg">🔑 설정</div>
+  </div>
+  <div class="acont on" id="ac-vdr">
+    <div class="add-row"><input type="text" id="newVdrInp" placeholder="새 업체명 입력"><button class="btn-add" id="btnAddVdr">+ 추가</button></div>
+    <div id="vdrList"></div>
+  </div>
+  <div class="acont" id="ac-tl">
+    <button class="btn-add-tool" id="btnAddTool">+ 새 공도구 추가</button>
+    <div id="toolAdm"></div>
+  </div>
+  <div class="acont" id="ac-cfg">
+    <div class="set-card">
+      <h3>🔑 PIN 번호 변경</h3>
+      <input type="password" class="set-input" id="curPin" maxlength="4" placeholder="현재 PIN">
+      <input type="password" class="set-input" id="newPin" maxlength="4" placeholder="새 PIN (숫자 4자리)">
+      <input type="password" class="set-input" id="newPin2" maxlength="4" placeholder="새 PIN 재입력">
+      <button class="btn-pin" id="btnChangePin">PIN 변경</button>
+    </div>
+    <div class="set-card"><h3>📊 데이터 현황</h3><div id="cfgStats"></div></div>
+  </div>
+</div>
+
+<!-- TOOL MODAL -->
+<div id="toolMdOv">
+  <div id="toolMdBox">
+    <h3 id="mdTitle">공도구 추가</h3>
+    <div class="md-fg"><label>아이콘 (이모지)</label><input type="text" id="edIcon" maxlength="4" placeholder="🔧"></div>
+    <div class="md-fg"><label>공도구명</label><input type="text" id="edName" placeholder="예: 전동 그라인더"></div>
+    <div class="md-fg"><label>카테고리</label>
+      <select id="edCat"><option>전동공구</option><option>용접장비</option><option>안전장비</option><option>이동장비</option><option>인양장비</option><option>측정장비</option></select>
+    </div>
+    <div class="md-fg"><label>점검 항목</label><div id="ceList"></div><button class="btn-add-ce" id="btnAddCe">+ 점검항목 추가</button></div>
+    <div class="md-acts"><button class="btn-md-can" id="btnMdCan">취소</button><button class="btn-md-save" id="btnMdSave">저장</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   SUPABASE 설정
+============================================================ */
+var SUPABASE_URL = 'https://mjjhxoqcsmstcqhidgrc.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_zAPQd2iGRT4kV4f_so-Z9w_dgmhwQmM';
+var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   STATE
+============================================================ */
+var PIN      = '1234';
+var VENDORS  = [];
+var TOOLS    = [];
+var CATS     = ['전체','전동공구','용접장비','안전장비','이동장비','인양장비','측정장비'];
+var curCat   = '전체';
+var curTool  = null;
+var selVdr   = '';
+var qty      = 1;
+var chkRes   = {};
+var editId   = null;
+var ceSeq    = 200;
+
+/* ============================================================
+   DEFAULT SEED DATA
+============================================================ */
+var DEFAULT_VENDORS = ['현대건설','삼성물산','GS건설','대우건설','포스코건설','롯데건설','SK에코플랜트'];
+
+var DEFAULT_TOOLS = [
+  {id:'T01',icon:'⚙️',name:'전동 그라인더',cat:'전동공구',checks:[{t:'안전 가드 장착',d:'휠 가드 정상 체결 여부'},{t:'디스크 균열·파손',d:'연마 디스크 상태 점검'},{t:'전원코드 피복',d:'절단·손상·피복 벗겨짐 여부'},{t:'공회전 이상유무',d:'진동·소음 이상 없음'},{t:'접지선 연결',d:'감전 방지 접지 상태'}]},
+  {id:'T02',icon:'🔩',name:'전동 드릴',cat:'전동공구',checks:[{t:'비트(척) 체결',d:'척(Chuck) 정상 고정 여부'},{t:'전원코드·배터리',d:'코드 손상 또는 충전량 확인'},{t:'트리거 스위치',d:'정상 ON/OFF 작동 확인'},{t:'정·역 선택기',d:'회전 방향 전환 정상 여부'}]},
+  {id:'T03',icon:'🪚',name:'전동 원형톱',cat:'전동공구',checks:[{t:'톱날 상태',d:'균열·변형·결손 여부'},{t:'안전 가드',d:'상·하 가드 정상 작동'},{t:'전원코드 피복',d:'손상·피복 벗겨짐 여부'},{t:'안전스위치',d:'의도치 않은 작동 방지'}]},
+  {id:'T04',icon:'🔨',name:'전동 해머드릴',cat:'전동공구',checks:[{t:'비트 체결',d:'생크 정상 삽입 및 고정'},{t:'해머·드릴 모드',d:'기능 전환 정상 작동'},{t:'전원코드',d:'피복 손상 여부'}]},
+  {id:'T05',icon:'🔧',name:'전동 임팩렌치',cat:'전동공구',checks:[{t:'소켓 체결',d:'소켓 정상 삽입 여부'},{t:'토크 설정',d:'작업 토크값 적정 여부'},{t:'배터리·코드',d:'충전량 또는 코드 손상'}]},
+  {id:'T10',icon:'🔥',name:'아크 용접기',cat:'용접장비',checks:[{t:'홀더 절연 상태',d:'용접봉 홀더 절연 손상 여부'},{t:'케이블 피복',d:'용접 케이블 손상 여부'},{t:'외함 접지',d:'용접기 본체 접지 상태'},{t:'전류 설정값',d:'작업 전류 설정 적정 여부'},{t:'냉각 팬 작동',d:'내부 팬 정상 회전 확인'}]},
+  {id:'T11',icon:'💨',name:'CO2 용접기',cat:'용접장비',checks:[{t:'가스 누출 여부',d:'배관·피팅 누출 점검'},{t:'와이어 피딩',d:'공급 롤러 및 와이어 상태'},{t:'토치 상태',d:'토치 절연 및 팁 상태'},{t:'가스 유량계',d:'적정 유량(L/min) 설정'}]},
+  {id:'T12',icon:'🌡️',name:'가스 절단기',cat:'용접장비',checks:[{t:'산소 밸브·호스',d:'누출 및 손상 여부'},{t:'아세틸렌 호스',d:'누출 및 균열 여부'},{t:'역화 방지기',d:'토치측 역화 방지기 장착'},{t:'압력 게이지',d:'산소·연료 압력 적정 여부'}]},
+  {id:'T20',icon:'🧯',name:'소화기',cat:'안전장비',checks:[{t:'안전핀 봉인',d:'안전핀 및 봉인줄 원형 여부'},{t:'압력 게이지',d:'압력계 지침 녹색 범위'},{t:'노즐·호스',d:'막힘·균열·손상 없음'},{t:'약제 유효기간',d:'제조일 기준 유효기간 이내'}]},
+  {id:'T21',icon:'🦺',name:'안전벨트(하네스)',cat:'안전장비',checks:[{t:'버클 체결 상태',d:'버클 정상 잠금·해제'},{t:'D링 변형 여부',d:'균열·비틀림·변형 확인'},{t:'스트랩 손상',d:'어깨·가슴·다리 스트랩'},{t:'충격흡수 장치',d:'충격흡수 팩 상태'},{t:'로프(죔줄) 상태',d:'킹크·마모·절단 여부'}]},
+  {id:'T22',icon:'⛑️',name:'안전모',cat:'안전장비',checks:[{t:'충격흡수재',d:'내부 발포재 손상·변형'},{t:'턱끈 체결',d:'정상 체결 및 조절 여부'},{t:'외부 균열',d:'쉘 균열·찌그러짐 여부'},{t:'제조일 확인',d:'사용기간(3년) 이내'}]},
+  {id:'T23',icon:'😷',name:'방진마스크',cat:'안전장비',checks:[{t:'필터 교체기간',d:'필터 사용기간 이내 여부'},{t:'안면부 밀착',d:'얼굴 밀착 상태 확인'},{t:'흡기·배기 밸브',d:'밸브 정상 작동 여부'}]},
+  {id:'T30',icon:'🪜',name:'이동식 사다리',cat:'이동장비',checks:[{t:'발판 변형·균열',d:'뒤틀림·균열 여부'},{t:'미끄럼 방지 캡',d:'하단 고무캡 마모·탈락'},{t:'잠금장치 작동',d:'안전 걸쇠 정상 고정'},{t:'하중 표시',d:'적재 하중 표시 부착 여부'}]},
+  {id:'T31',icon:'🏗️',name:'이동식 비계',cat:'이동장비',checks:[{t:'바퀴 잠금 장치',d:'캐스터 잠금 정상 작동'},{t:'연결핀 체결',d:'핀 정상 체결 여부'},{t:'수평 상태',d:'수평계 또는 육안 확인'},{t:'안전 난간',d:'상부 난간 정상 체결'}]},
+  {id:'T32',icon:'🚗',name:'고소작업대',cat:'이동장비',checks:[{t:'아웃리거 전개',d:'정상 전개 및 고정'},{t:'작업대 난간',d:'난간 체결 및 높이 기준'},{t:'비상 하강',d:'비상 하강 버튼 작동'},{t:'유압 실린더',d:'오일 누유 여부'}]},
+  {id:'T40',icon:'⛓️',name:'체인블록',cat:'인양장비',checks:[{t:'체인 마모·변형',d:'링크 연신·마모량 초과 여부'},{t:'훅 안전핀',d:'열림 방지 핀 정상'},{t:'브레이크 작동',d:'하강 정지 브레이크 확인'},{t:'정격 하중 표시',d:'표찰 부착 및 정격 하중'}]},
+  {id:'T41',icon:'🔗',name:'레버블록',cat:'인양장비',checks:[{t:'레버 작동',d:'정·역 레버 정상 작동'},{t:'훅 안전핀',d:'상·하 훅 열림 방지 핀'},{t:'체인 상태',d:'킹크·변형·마모 여부'}]},
+  {id:'T42',icon:'🪢',name:'와이어로프 슬링',cat:'인양장비',checks:[{t:'킹크·꼬임',d:'영구 변형 킹크 여부'},{t:'소선 절단',d:'와이어 소선 절단 수 기준'},{t:'표면 부식',d:'심한 녹·부식 여부'}]},
+  {id:'T50',icon:'📡',name:'산소농도계',cat:'측정장비',checks:[{t:'배터리 잔량',d:'충분한 배터리 확인'},{t:'센서 반응',d:'대기 중 정상 수치(20.9%)'},{t:'경보음 작동',d:'설정 농도 이하 경보 작동'},{t:'검·교정 기간',d:'검·교정 기간 이내'}]},
+  {id:'T51',icon:'💨',name:'가스 검지기',cat:'측정장비',checks:[{t:'배터리 잔량',d:'충분한 배터리 확인'},{t:'센서 유효기간',d:'센서 교체기간 이내 여부'},{t:'경보 작동',d:'경보 설정값 및 작동'},{t:'제로 교정',d:'신선한 공기 중 제로 교정'}]},
+  {id:'T52',icon:'⚡',name:'접지저항계',cat:'측정장비',checks:[{t:'배터리 잔량',d:'충분한 배터리 확인'},{t:'프로브 상태',d:'측정봉·클립 손상 여부'},{t:'검·교정 기간',d:'검·교정 기간 이내'}]},
+  {id:'T53',icon:'🔋',name:'발전기',cat:'측정장비',checks:[{t:'연료 잔량',d:'적정 연료량 확인'},{t:'오일 레벨',d:'오일 게이지 정상 범위'},{t:'누유 여부',d:'연료·오일 누유 여부'},{t:'배기가스 방향',d:'배기구 방향 및 환기 상태'}]}
+];
+
+/* ============================================================
+   LOADING
+============================================================ */
+function showLoading(txt) {
+  document.getElementById('loadingTxt').textContent = txt || '처리 중...';
+  document.getElementById('loadingOv').classList.remove('hide');
+}
+function hideLoading() {
+  document.getElementById('loadingOv').classList.add('hide');
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+var toastTimer = null;
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('on'); }, 2800);
+}
+
+/* ============================================================
+   INIT - Supabase 데이터 로드
+============================================================ */
+async function initData() {
+  showLoading('데이터 불러오는 중...');
+  try {
+    await loadVendors();
+    await loadTools();
+    initChips();
+    renderGrid();
+  } catch(e) {
+    showToast('⚠️ 연결 오류: ' + e.message);
+  }
+  hideLoading();
+}
+
+async function loadVendors() {
+  var res = await db.from('vendors').select('name').order('name');
+  if (res.error) throw new Error(res.error.message);
+  if (res.data.length === 0) {
+    // 최초 실행: 기본 업체 등록
+    var rows = DEFAULT_VENDORS.map(function(n){ return {name: n}; });
+    await db.from('vendors').insert(rows);
+    VENDORS = DEFAULT_VENDORS.slice();
+  } else {
+    VENDORS = res.data.map(function(v){ return v.name; });
+  }
+}
+
+async function loadTools() {
+  var res = await db.from('tools').select('*').order('name');
+  if (res.error) throw new Error(res.error.message);
+  if (res.data.length === 0) {
+    // 최초 실행: 기본 공도구 등록
+    var rows = DEFAULT_TOOLS.map(function(t){
+      return {id: t.id, icon: t.icon, name: t.name, category: t.cat, checks: t.checks};
+    });
+    await db.from('tools').insert(rows);
+    TOOLS = DEFAULT_TOOLS.slice();
+  } else {
+    TOOLS = res.data.map(function(t){
+      return {id: t.id, icon: t.icon, name: t.name, cat: t.category, checks: t.checks};
+    });
+  }
+}
+
+/* ============================================================
+   TAB NAVIGATION
+============================================================ */
+function switchTab(id) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('page-' + id).classList.add('on');
+  document.getElementById('tab-' + id).classList.add('on');
+  if (id === 'rec')  loadAndRenderRec();
+  if (id === 'stat') loadAndRenderStat();
+}
+
+/* ============================================================
+   CHIP / GRID
+============================================================ */
+function initChips() {
+  var wrap = document.getElementById('chipWrap');
+  wrap.innerHTML = '';
+  CATS.forEach(function(cat) {
+    var d = document.createElement('div');
+    d.className = 'chip' + (cat === curCat ? ' on' : '');
+    d.textContent = cat;
+    d.addEventListener('click', function() { setCat(cat); });
+    wrap.appendChild(d);
+  });
+}
+function setCat(cat) {
+  curCat = cat;
+  document.querySelectorAll('#chipWrap .chip').forEach(function(c, i){
+    c.classList.toggle('on', CATS[i] === cat);
+  });
+  renderGrid();
+}
+function renderGrid() {
+  var q = document.getElementById('srchInput').value.toLowerCase();
+  var f = TOOLS.filter(function(t){
+    return (curCat === '전체' || t.cat === curCat) &&
+           (!q || t.name.toLowerCase().indexOf(q) >= 0);
+  });
+  var g = document.getElementById('toolGrid');
+  if (!f.length) { g.innerHTML = '<div class="empty" style="grid-column:span 2"><div class="ei">🔍</div>검색 결과 없음</div>'; return; }
+  g.innerHTML = '';
+  f.forEach(function(tool) {
+    var d = document.createElement('div');
+    d.className = 'tc';
+    d.innerHTML = '<div class="ic">'+tool.icon+'</div><div class="nm">'+tool.name+'</div><div class="ct">'+tool.cat+'</div><div class="cnt">점검 '+tool.checks.length+'항목</div>';
+    d.addEventListener('click', function(){ selectTool(tool.id); });
+    g.appendChild(d);
+  });
+}
+
+/* ============================================================
+   TOOL SELECTION & INSPECTION
+============================================================ */
+function selectTool(id) {
+  curTool = TOOLS.find(function(t){ return t.id === id; });
+  if (!curTool) return;
+  selVdr = ''; qty = 1; chkRes = {};
+  document.getElementById('qtyNum').textContent = '1';
+  document.getElementById('inspHeader').innerHTML =
+    '<div style="display:flex;align-items:center;gap:11px;">'
+    +'<span style="font-size:34px;">'+curTool.icon+'</span>'
+    +'<div><div class="iname">'+curTool.name+'</div>'
+    +'<div class="imeta"><span class="ibadge">'+curTool.cat+'</span>'
+    +'<span class="ibadge">점검항목 '+curTool.checks.length+'개</span></div></div></div>';
+  var dd = document.getElementById('vdrSel');
+  dd.innerHTML = '<option value="">-- 업체를 선택하세요 --</option>';
+  VENDORS.forEach(function(v){
+    var o = document.createElement('option'); o.value = v; o.textContent = v; dd.appendChild(o);
+  });
+  renderChks();
+  document.getElementById('toolSelWrap').style.display = 'none';
+  document.getElementById('inspWrap').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function renderChks() {
+  var total = curTool.checks.length, done = Object.keys(chkRes).length;
+  var pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progLbl').textContent = done+' / '+total+' 완료';
+  document.getElementById('progPct').textContent = pct+'%';
+  document.getElementById('progFill').style.width = pct+'%';
+  var list = document.getElementById('chkList');
+  list.innerHTML = '';
+  curTool.checks.forEach(function(chk, idx) {
+    var d = document.createElement('div'); d.className = 'ci';
+    d.innerHTML = '<div class="ci-no">'+(idx+1)+'</div>'
+      +'<div class="ci-txt"><div class="ci-name">'+chk.t+'</div><div class="ci-desc">'+chk.d+'</div></div>'
+      +'<div class="ci-btns">'
+      +'<button class="cbtn cg'+(chkRes[idx]==='good'?' on':'')+'" data-i="'+idx+'" data-v="good">양호</button>'
+      +'<button class="cbtn cb'+(chkRes[idx]==='bad'?' on':'')+'" data-i="'+idx+'" data-v="bad">불량</button>'
+      +'</div>';
+    d.querySelectorAll('.cbtn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        chkRes[this.getAttribute('data-i')] = this.getAttribute('data-v');
+        renderChks();
+      });
+    });
+    list.appendChild(d);
+  });
+}
+
+async function submitInsp() {
+  var vdr = document.getElementById('vdrSel').value;
+  if (!vdr) { showToast('⚠️ 업체를 선택해주세요'); return; }
+  var total = curTool.checks.length, done = Object.keys(chkRes).length;
+  if (done < total) { showToast('⚠️ '+(total-done)+'개 항목을 더 점검해주세요'); return; }
+  var badCnt = Object.values(chkRes).filter(function(v){ return v==='bad'; }).length;
+  var result = badCnt > 0 ? '불량' : '양호';
+  var items = curTool.checks.map(function(c, i){ return {t: c.t, r: chkRes[i]}; });
+
+  showLoading('저장 중...');
+  var res = await db.from('inspections').insert({
+    tool_id: curTool.id,
+    tool_name: curTool.name,
+    category: curTool.cat,
+    vendor: vdr,
+    quantity: qty,
+    result: result,
+    items: items,
+    inspector: document.getElementById('inspector').value || '미입력',
+    note: document.getElementById('noteInput').value || ''
+  });
+  hideLoading();
+
+  if (res.error) { showToast('⚠️ 저장 실패: ' + res.error.message); return; }
+  showToast('✅ 완료 | '+vdr+' · '+curTool.name+' · '+qty+'개 · '+result);
+  setTimeout(function(){ resetInsp(); switchTab('rec'); }, 1500);
+}
+
+function resetInsp() {
+  curTool = null; selVdr = ''; qty = 1; chkRes = {};
+  document.getElementById('toolSelWrap').style.display = 'block';
+  document.getElementById('inspWrap').style.display = 'none';
+}
+
+/* ============================================================
+   RECORDS
+============================================================ */
+async function loadAndRenderRec() {
+  showLoading('기록 불러오는 중...');
+  var fv = document.getElementById('fVdr').value;
+  var ft = document.getElementById('fTool').value;
+  var fr = document.getElementById('fRes').value;
+
+  var query = db.from('inspections').select('*').order('inspected_at', {ascending: false});
+  if (fv) query = query.eq('vendor', fv);
+  if (ft) query = query.eq('tool_name', ft);
+  if (fr) query = query.eq('result', fr);
+
+  var res = await query;
+  hideLoading();
+  if (res.error) { showToast('⚠️ 오류: '+res.error.message); return; }
+
+  var f = res.data;
+  var tq=0, gq=0, bq=0;
+  f.forEach(function(r){ tq+=r.quantity; if(r.result==='양호') gq+=r.quantity; else bq+=r.quantity; });
+
+  // 필터 업데이트
+  var allRes = await db.from('inspections').select('vendor,tool_name');
+  if (!allRes.error) {
+    var vs=[], ts=[];
+    allRes.data.forEach(function(r){
+      if(vs.indexOf(r.vendor)<0) vs.push(r.vendor);
+      if(ts.indexOf(r.tool_name)<0) ts.push(r.tool_name);
+    });
+    vs.sort(); ts.sort();
+    var fvEl=document.getElementById('fVdr'), ftEl=document.getElementById('fTool');
+    var cv=fvEl.value, ct=ftEl.value;
+    fvEl.innerHTML='<option value="">전체 업체</option>'+vs.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+    ftEl.innerHTML='<option value="">전체 공도구</option>'+ts.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('');
+    fvEl.value=cv; ftEl.value=ct;
+  }
+
+  document.getElementById('sumGrid').innerHTML =
+    '<div class="si"><div class="sn" style="color:#1565C0;">'+f.length+'</div><div class="sl">점검건수</div></div>'
+    +'<div class="si"><div class="sn" style="color:#6A1B9A;">'+tq+'</div><div class="sl">총수량</div></div>'
+    +'<div class="si"><div class="sn" style="color:#2E7D32;">'+gq+'</div><div class="sl">양호수량</div></div>'
+    +'<div class="si"><div class="sn" style="color:#C62828;">'+bq+'</div><div class="sl">불량수량</div></div>';
+
+  var rl = document.getElementById('recList');
+  if (!f.length) { rl.innerHTML='<div class="empty"><div class="ei">📭</div>점검 기록 없음</div>'; return; }
+  rl.innerHTML = '';
+  f.forEach(function(r) {
+    var dt = new Date(r.inspected_at);
+    var ds = (dt.getMonth()+1).toString().padStart(2,'0')+'/'
+      +dt.getDate().toString().padStart(2,'0')+' '
+      +dt.getHours().toString().padStart(2,'0')+':'
+      +dt.getMinutes().toString().padStart(2,'0');
+    var note = r.note ? '<span class="rtag rtag-warn">📝 '+r.note+'</span>' : '';
+    var d = document.createElement('div');
+    d.className = 'rc '+(r.result==='양호'?'g':'b');
+    d.innerHTML =
+      '<div class="rc-top"><div class="rc-nm">'+r.tool_name+'</div>'
+      +'<span class="rbadge '+(r.result==='양호'?'rbg':'rbb')+'">'+(r.result==='양호'?'✅':'❌')+' '+r.result+'</span></div>'
+      +'<div class="rtags">'
+      +'<span class="rtag">🏢 '+r.vendor+'</span>'
+      +'<span class="rtag rtag-qty">📦 '+r.quantity+'개</span>'
+      +'<span class="rtag">🗂️ '+r.category+'</span>'
+      +'<span class="rtag">👤 '+r.inspector+'</span>'
+      +'<span class="rtag">🕐 '+ds+'</span>'
+      +note+'</div>'
+      +'<div class="rdet" id="det'+r.id+'">'
+      +(r.items||[]).map(function(it){ return '<div class="drow"><span>· '+it.t+'</span><span style="color:'+(it.r==='good'?'#2E7D32':'#C62828')+';">'+(it.r==='good'?'양호':'불량')+'</span></div>'; }).join('')
+      +'</div>'
+      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세</button>';
+    d.querySelector('.expbtn').addEventListener('click', function(){
+      var rid=this.getAttribute('data-id');
+      var el=document.getElementById('det'+rid);
+      el.classList.toggle('on');
+      this.textContent=el.classList.contains('on')?'▲ 접기':'▼ 점검항목 상세';
+    });
+    rl.appendChild(d);
+  });
+}
+
+/* ============================================================
+   STATS
+============================================================ */
+async function loadAndRenderStat() {
+  showLoading('통계 집계 중...');
+  var res = await db.from('inspections').select('*');
+  hideLoading();
+  if (res.error) { showToast('⚠️ 오류: '+res.error.message); return; }
+  var data = res.data;
+  var tot=data.length, tq=0, good=0, bad=0;
+  data.forEach(function(r){ tq+=r.quantity; if(r.result==='양호') good++; else bad++; });
+  document.getElementById('kTot').textContent  = tot;
+  document.getElementById('kQty').textContent  = tq;
+  document.getElementById('kGood').textContent = good;
+  document.getElementById('kBad').textContent  = bad;
+
+  // Pivot
+  var pmap={};
+  data.forEach(function(r){
+    var k=r.vendor+'|'+r.tool_name;
+    if(!pmap[k]) pmap[k]={vendor:r.vendor,tool:r.tool_name,qty:0,good:0,bad:0};
+    pmap[k].qty+=r.quantity;
+    if(r.result==='양호') pmap[k].good++; else pmap[k].bad++;
+  });
+  var prows=Object.values(pmap).sort(function(a,b){return a.vendor.localeCompare(b.vendor);});
+  var ptbl='<thead><tr><th>업체명</th><th>공도구</th><th>수량</th><th>양호</th><th>불량</th><th>양호율</th></tr></thead><tbody>';
+  prows.forEach(function(p){
+    var t=p.good+p.bad, rt=Math.round(p.good/t*100);
+    var c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
+    ptbl+='<tr><td style="font-weight:600;font-size:12px;">'+p.vendor+'</td><td style="font-size:12px;">'+p.tool+'</td>'
+      +'<td style="text-align:center;font-weight:800;color:#6A1B9A;">'+p.qty+'</td>'
+      +'<td style="text-align:center;color:#2E7D32;font-weight:700;">'+p.good+'</td>'
+      +'<td style="text-align:center;color:#C62828;font-weight:700;">'+p.bad+'</td>'
+      +'<td style="text-align:center;font-weight:800;color:'+c+';">'+rt+'%</td></tr>';
+  });
+  document.getElementById('pivotTbl').innerHTML=ptbl+'</tbody>';
+
+  // 업체 차트
+  var vmap={};
+  data.forEach(function(r){ if(!vmap[r.vendor]) vmap[r.vendor]={good:0,total:0}; vmap[r.vendor].total++; if(r.result==='양호') vmap[r.vendor].good++; });
+  var vc='';
+  Object.entries(vmap).sort(function(a,b){return b[1].good/b[1].total-a[1].good/a[1].total;}).forEach(function(e){
+    var rt=Math.round(e[1].good/e[1].total*100), c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
+    vc+='<div class="bar-row"><div class="bar-lbl">'+e[0]+'</div><div class="bar-track"><div class="bar-fill" style="width:'+rt+'%;background:'+c+';">'+rt+'%</div></div><div class="bar-val" style="color:'+c+';">'+rt+'%</div></div>';
+  });
+  document.getElementById('vChart').innerHTML = vc || '<div class="empty">데이터 없음</div>';
+
+  // 공도구 차트
+  var tmap={};
+  data.forEach(function(r){ if(!tmap[r.tool_name]) tmap[r.tool_name]={qty:0}; tmap[r.tool_name].qty+=r.quantity; });
+  var tarr=Object.entries(tmap).sort(function(a,b){return b[1].qty-a[1].qty;});
+  var mq=tarr.length?tarr[0][1].qty:1, tc='';
+  tarr.forEach(function(e){
+    var nm=e[0].replace('전동 ','').replace('이동식 ','').replace(' (하네스)','');
+    tc+='<div class="bar-row"><div class="bar-lbl">'+nm+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(e[1].qty/mq*100)+'%;background:#1565C0;">'+e[1].qty+'개</div></div><div class="bar-val">'+e[1].qty+'</div></div>';
+  });
+  document.getElementById('tChart').innerHTML = tc || '<div class="empty">데이터 없음</div>';
+}
+
+/* ============================================================
+   ADMIN LOGIN
+============================================================ */
+function openLogin() { document.getElementById('pinInp').value=''; document.getElementById('pinErr').style.display='none'; document.getElementById('loginOv').classList.add('on'); setTimeout(function(){document.getElementById('pinInp').focus();},150); }
+function closeLogin() { document.getElementById('loginOv').classList.remove('on'); }
+function doLogin() {
+  if (document.getElementById('pinInp').value===PIN) { closeLogin(); openAdmin(); }
+  else { document.getElementById('pinErr').style.display='block'; document.getElementById('pinInp').value=''; }
+}
+
+/* ============================================================
+   ADMIN
+============================================================ */
+function openAdmin() { document.getElementById('adminPg').classList.add('on'); document.getElementById('btnAdmin').classList.add('on'); adminNav('vdr'); }
+function closeAdmin() { document.getElementById('adminPg').classList.remove('on'); document.getElementById('btnAdmin').classList.remove('on'); }
+function adminNav(tab) {
+  ['vdr','tl','cfg'].forEach(function(t){
+    document.getElementById('atab-'+t).classList.toggle('on',t===tab);
+    document.getElementById('ac-'+t).classList.toggle('on',t===tab);
+  });
+  if(tab==='vdr') renderVdrAdmin();
+  if(tab==='tl')  renderToolAdm();
+  if(tab==='cfg') renderCfg();
+}
+
+async function renderVdrAdmin() {
+  var el=document.getElementById('vdrList'); el.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;">불러오는 중...</div>';
+  var res=await db.from('vendors').select('*').order('name');
+  if(res.error){el.innerHTML='오류';return;}
+  el.innerHTML='';
+  res.data.forEach(function(v){
+    var cnt=0; // 실시간 카운트는 생략(성능)
+    var d=document.createElement('div'); d.className='vi';
+    d.innerHTML='<div><div class="vi-nm">'+v.name+'</div></div><button class="btn-del">삭제</button>';
+    d.querySelector('.btn-del').addEventListener('click',function(){delVdr(v.id,v.name);});
+    el.appendChild(d);
+  });
+}
+async function addVdr() {
+  var inp=document.getElementById('newVdrInp'), name=inp.value.trim();
+  if(!name){showToast('⚠️ 업체명을 입력하세요');return;}
+  showLoading('저장 중...');
+  var res=await db.from('vendors').insert({name:name});
+  hideLoading();
+  if(res.error){showToast('⚠️ '+(res.error.message.includes('unique')?'이미 등록된 업체입니다':res.error.message));return;}
+  VENDORS.push(name); inp.value='';
+  renderVdrAdmin(); showToast('✅ "'+name+'" 등록 완료');
+}
+async function delVdr(id,name) {
+  if(!confirm('"'+name+'"을 삭제하시겠습니까?')) return;
+  showLoading('삭제 중...');
+  await db.from('vendors').delete().eq('id',id);
+  hideLoading();
+  VENDORS=VENDORS.filter(function(v){return v!==name;});
+  renderVdrAdmin(); showToast('🗑️ "'+name+'" 삭제');
+}
+
+async function renderToolAdm() {
+  var el=document.getElementById('toolAdm'); el.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;">불러오는 중...</div>';
+  var res=await db.from('tools').select('*').order('name');
+  if(res.error){el.innerHTML='오류';return;}
+  el.innerHTML='';
+  res.data.forEach(function(t){
+    var d=document.createElement('div'); d.className='tacard';
+    d.innerHTML='<div class="ta-top"><div class="ta-icon">'+t.icon+'</div>'
+      +'<div style="flex:1;"><div class="ta-nm">'+t.name+'</div><div class="ta-cat">'+t.category+' · '+t.checks.length+'항목</div></div>'
+      +'<div class="ta-acts"><button class="btn-edit">✏️</button><button class="btn-del">삭제</button></div></div>'
+      +'<div class="ctags">'+t.checks.map(function(c){return '<span class="ctag">· '+c.t+'</span>';}).join('')+'</div>';
+    d.querySelector('.btn-edit').addEventListener('click',function(){openToolMd(t.id);});
+    d.querySelector('.btn-del').addEventListener('click',function(){delTool(t.id,t.name);});
+    el.appendChild(d);
+  });
+}
+async function delTool(id,name) {
+  if(!confirm('"'+name+'"을 삭제하시겠습니까?')) return;
+  showLoading('삭제 중...');
+  await db.from('tools').delete().eq('id',id);
+  hideLoading();
+  TOOLS=TOOLS.filter(function(t){return t.id!==id;});
+  renderToolAdm(); renderGrid(); showToast('🗑️ "'+name+'" 삭제');
+}
+
+function openToolMd(id) {
+  editId=id;
+  document.getElementById('mdTitle').textContent=id?'공도구 수정':'공도구 추가';
+  if(id){
+    var t=TOOLS.find(function(x){return x.id===id;});
+    document.getElementById('edIcon').value=t?t.icon:'🔧';
+    document.getElementById('edName').value=t?t.name:'';
+    document.getElementById('edCat').value=t?t.cat:'전동공구';
+    document.getElementById('ceList').innerHTML=t?t.checks.map(function(c,i){return ceRow(i,c.t,c.d);}).join(''): ceRow(0,'','');
+  } else {
+    document.getElementById('edIcon').value='🔧';
+    document.getElementById('edName').value='';
+    document.getElementById('edCat').value='전동공구';
+    document.getElementById('ceList').innerHTML=ceRow(0,'','');
+  }
+  attachCeDel();
+  document.getElementById('toolMdOv').classList.add('on');
+}
+function ceRow(i,t,d){
+  return '<div class="ce-item"><div style="flex:1;display:flex;flex-direction:column;gap:5px;">'
+    +'<input type="text" placeholder="항목명 (예: 안전 가드 장착)" value="'+t+'">'
+    +'<input type="text" placeholder="설명" value="'+d+'" style="font-size:13px;color:#888;"></div>'
+    +'<button class="btn-ce-del">✕</button></div>';
+}
+function attachCeDel(){
+  document.querySelectorAll('#ceList .btn-ce-del').forEach(function(btn){
+    btn.addEventListener('click',function(){this.parentElement.remove();});
+  });
+}
+function addCeRow(){
+  var d=document.createElement('div'); d.innerHTML=ceRow(ceSeq++,'','');
+  var item=d.querySelector('.ce-item');
+  item.querySelector('.btn-ce-del').addEventListener('click',function(){item.remove();});
+  document.getElementById('ceList').appendChild(item);
+}
+function closeMd(){ document.getElementById('toolMdOv').classList.remove('on'); }
+async function saveTool(){
+  var icon=document.getElementById('edIcon').value.trim()||'🔧';
+  var name=document.getElementById('edName').value.trim();
+  var cat=document.getElementById('edCat').value;
+  if(!name){showToast('⚠️ 공도구명을 입력하세요');return;}
+  var checks=[];
+  document.querySelectorAll('#ceList .ce-item').forEach(function(row){
+    var ins=row.querySelectorAll('input');
+    var t=ins[0].value.trim(), d=ins[1].value.trim();
+    if(t) checks.push({t:t,d:d});
+  });
+  if(!checks.length){showToast('⚠️ 점검항목을 최소 1개 입력하세요');return;}
+  showLoading('저장 중...');
+  var res;
+  if(editId){
+    res=await db.from('tools').update({icon:icon,name:name,category:cat,checks:checks}).eq('id',editId);
+    if(!res.error){
+      var idx=TOOLS.findIndex(function(x){return x.id===editId;});
+      if(idx>=0) TOOLS[idx]={id:editId,icon:icon,name:name,cat:cat,checks:checks};
+      showToast('✅ "'+name+'" 수정 완료');
+    }
+  } else {
+    var newId='T'+Date.now();
+    res=await db.from('tools').insert({id:newId,icon:icon,name:name,category:cat,checks:checks});
+    if(!res.error){ TOOLS.push({id:newId,icon:icon,name:name,cat:cat,checks:checks}); showToast('✅ "'+name+'" 추가 완료'); }
+  }
+  hideLoading();
+  if(res.error){showToast('⚠️ 저장 실패: '+res.error.message);return;}
+  closeMd(); renderToolAdm(); renderGrid();
+}
+
+function renderCfg(){ document.getElementById('cfgStats').innerHTML='<div class="srow"><span>등록 업체</span><span class="sval">'+VENDORS.length+'개</span></div><div class="srow"><span>등록 공도구</span><span class="sval">'+TOOLS.length+'종</span></div>'; }
+function changePin(){
+  var cur=document.getElementById('curPin').value, np=document.getElementById('newPin').value, np2=document.getElementById('newPin2').value;
+  if(cur!==PIN){showToast('⚠️ 현재 PIN이 올바르지 않습니다');return;}
+  if(!/^\d{4}$/.test(np)){showToast('⚠️ 새 PIN은 숫자 4자리');return;}
+  if(np!==np2){showToast('⚠️ 새 PIN이 일치하지 않습니다');return;}
+  PIN=np; ['curPin','newPin','newPin2'].forEach(function(id){document.getElementById(id).value='';});
+  showToast('✅ PIN이 변경되었습니다');
+}
+
+/* ============================================================
+   EVENT LISTENERS
+============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('tab-scan').addEventListener('click', function(){ switchTab('scan'); });
+  document.getElementById('tab-rec').addEventListener('click',  function(){ switchTab('rec');  });
+  document.getElementById('tab-stat').addEventListener('click', function(){ switchTab('stat'); });
+  document.getElementById('btnAdmin').addEventListener('click', openLogin);
+  document.getElementById('btnDoLogin').addEventListener('click', doLogin);
+  document.getElementById('btnCancelLogin').addEventListener('click', closeLogin);
+  document.getElementById('btnCloseAdmin').addEventListener('click', closeAdmin);
+  document.getElementById('pinInp').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  document.getElementById('atab-vdr').addEventListener('click', function(){ adminNav('vdr'); });
+  document.getElementById('atab-tl').addEventListener('click',  function(){ adminNav('tl');  });
+  document.getElementById('atab-cfg').addEventListener('click', function(){ adminNav('cfg'); });
+  document.getElementById('btnAddVdr').addEventListener('click', addVdr);
+  document.getElementById('newVdrInp').addEventListener('keydown', function(e){ if(e.key==='Enter') addVdr(); });
+  document.getElementById('btnAddTool').addEventListener('click', function(){ openToolMd(null); });
+  document.getElementById('btnAddCe').addEventListener('click', addCeRow);
+  document.getElementById('btnMdCan').addEventListener('click', closeMd);
+  document.getElementById('btnMdSave').addEventListener('click', saveTool);
+  document.getElementById('scannerBox').addEventListener('click', function(){ showToast('📷 실제 앱 연동 시 카메라 QR 스캔 작동'); });
+  document.getElementById('srchInput').addEventListener('input', renderGrid);
+  document.getElementById('qMinus').addEventListener('click', function(){ qty=Math.max(1,qty-1); document.getElementById('qtyNum').textContent=qty; });
+  document.getElementById('qPlus').addEventListener('click',  function(){ qty++; document.getElementById('qtyNum').textContent=qty; });
+  document.getElementById('vdrSel').addEventListener('change', function(){ selVdr=this.value; });
+  document.getElementById('btnSubmit').addEventListener('click', submitInsp);
+  document.getElementById('btnReset').addEventListener('click', resetInsp);
+  document.getElementById('fVdr').addEventListener('change', loadAndRenderRec);
+  document.getElementById('fTool').addEventListener('change', loadAndRenderRec);
+  document.getElementById('fRes').addEventListener('change', loadAndRenderRec);
+  document.getElementById('btnChangePin').addEventListener('click', changePin);
+
+  // 앱 시작
+  initData();
+});
+</script>
+</body>
+</html>
