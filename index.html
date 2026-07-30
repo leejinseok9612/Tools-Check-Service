@@ -212,6 +212,12 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .srow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F4F4F4;font-size:14px;}
 .srow:last-child{border-bottom:none;}
 .sval{font-weight:700;color:#1565C0;}
+/* 사진 촬영 */
+#photoWrap { margin-bottom:12px; }
+#photoPreview { width:100%; border-radius:10px; display:none; margin-top:10px; max-height:220px; object-fit:cover; border:2px solid #E0E0E0; }
+.btn-photo { width:100%; padding:13px; background:#E3F2FD; color:#1565C0; border:1.5px dashed #1565C0; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-photo-del { width:100%; padding:9px; background:#fff; border:1.5px solid #FFCDD2; color:#C62828; border-radius:9px; font-size:13px; cursor:pointer; margin-top:6px; font-family:inherit; display:none; }
+.rec-photo { width:100%; border-radius:8px; margin-top:8px; max-height:180px; object-fit:cover; }
 /* QR 출력 */
 .qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
 .qr-card{background:#fff;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);border:1.5px solid #E0E0E0;}
@@ -303,6 +309,15 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       <div class="progRow"><span id="progLbl">0 / 0 완료</span><span id="progPct">0%</span></div>
       <div class="progTrack"><div class="progFill" id="progFill" style="width:0%"></div></div>
       <div id="chkList"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">📸 공도구 사진</div>
+      <div id="photoWrap">
+        <button class="btn-photo" id="btnPhoto">📷 사진 촬영하기</button>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+        <img id="photoPreview" alt="공도구 사진">
+        <button class="btn-photo-del" id="btnPhotoDel">🗑️ 사진 삭제</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-hd">📝 추가 정보</div>
@@ -423,6 +438,7 @@ var selVdr   = '';
 var qty      = 1;
 var chkRes   = {};
 var editId   = null;
+var curPhoto = null; // base64 사진
 var ceSeq    = 200;
 
 /* ============================================================
@@ -495,8 +511,8 @@ async function initData() {
     var urlP = new URLSearchParams(window.location.search);
     var preId = urlP.get('tool');
     if (preId) {
-      var preT = allTools.find(function(t){ return t.id === preId; });
-      if (preT) { setTimeout(function(){ selectTool(preT); }, 300); }
+      var preT = TOOLS.find(function(t){ return t.id === preId; });
+      if (preT) { setTimeout(function(){ selectTool(preT.id); }, 300); }
     }
   } catch(e) {}
   hideLoading();
@@ -653,7 +669,8 @@ async function submitInsp() {
     result: result,
     items: items,
     inspector: document.getElementById('inspector').value || '미입력',
-    note: document.getElementById('noteInput').value || ''
+    note: document.getElementById('noteInput').value || '',
+    photo: curPhoto || null
   });
   hideLoading();
 
@@ -663,7 +680,12 @@ async function submitInsp() {
 }
 
 function resetInsp() {
-  curTool = null; selVdr = ''; qty = 1; chkRes = {};
+  curTool = null; selVdr = ''; qty = 1; chkRes = {}; curPhoto = null;
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoPreview').src = '';
+  document.getElementById('btnPhotoDel').style.display = 'none';
+  document.getElementById('btnPhoto').style.display = 'flex';
+  document.getElementById('photoInput').value = '';
   document.getElementById('toolSelWrap').style.display = 'block';
   document.getElementById('inspWrap').style.display = 'none';
 }
@@ -736,8 +758,9 @@ async function loadAndRenderRec() {
       +note+'</div>'
       +'<div class="rdet" id="det'+r.id+'">'
       +(r.items||[]).map(function(it){ return '<div class="drow"><span>· '+it.t+'</span><span style="color:'+(it.r==='good'?'#2E7D32':'#C62828')+';">'+(it.r==='good'?'양호':'불량')+'</span></div>'; }).join('')
+      +(r.photo ? '<img class="rec-photo" src="'+r.photo+'" alt="공도구 사진">' : '')
       +'</div>'
-      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세</button>';
+      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세'+(r.photo?' 📸':'')+'</button>';
     d.querySelector('.expbtn').addEventListener('click', function(){
       var rid=this.getAttribute('data-id');
       var el=document.getElementById('det'+rid);
@@ -850,7 +873,7 @@ function renderQRGrid() {
   var BASE_URL = 'https://leejinseok9612.github.io/Tools-Check-Service/';
   var grid = document.getElementById('qrPrintGrid');
   if (!grid) return;
-  var tools = TOOLS.length ? TOOLS : allTools;
+  var tools = TOOLS;
   grid.innerHTML = tools.map(function(t) {
     var link = BASE_URL + '?tool=' + encodeURIComponent(t.id);
     var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=6&data=' + encodeURIComponent(link);
@@ -1083,19 +1106,18 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function handleQRResult(data) {
-    showToast('✅ QR 인식: ' + data);
     // URL 파라미터에서 tool ID 추출: ?tool=TOOL_ID
     try {
       var url = new URL(data);
       var toolId = url.searchParams.get('tool');
       if (toolId) {
-        var found = allTools.find(function(t){ return t.id === toolId; });
-        if (found) { selectTool(found); return; }
+        var found = TOOLS.find(function(t){ return t.id === toolId; });
+        if (found) { showToast('✅ ' + found.name + ' QR 인식!'); selectTool(found.id); return; }
       }
     } catch(e) {}
-    // URL이 아니면 tool ID 직접 매칭
-    var found = allTools.find(function(t){ return t.id === data || t.name === data; });
-    if (found) { selectTool(found); }
+    // URL이 아니면 tool ID 또는 이름 직접 매칭
+    var found = TOOLS.find(function(t){ return t.id === data || t.name === data; });
+    if (found) { showToast('✅ ' + found.name + ' QR 인식!'); selectTool(found.id); }
     else { showToast('⚠️ 등록되지 않은 QR코드예요'); }
   }
 
@@ -1107,6 +1129,43 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('vdrSel').addEventListener('change', function(){ selVdr=this.value; });
   document.getElementById('btnSubmit').addEventListener('click', submitInsp);
   document.getElementById('btnReset').addEventListener('click', resetInsp);
+
+  // 사진 촬영
+  document.getElementById('btnPhoto').addEventListener('click', function(){
+    document.getElementById('photoInput').click();
+  });
+  document.getElementById('photoInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        // 최대 800px로 압축
+        var maxW = 800, scale = Math.min(1, maxW / img.width);
+        var canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        curPhoto = canvas.toDataURL('image/jpeg', 0.75);
+        var prev = document.getElementById('photoPreview');
+        prev.src = curPhoto;
+        prev.style.display = 'block';
+        document.getElementById('btnPhotoDel').style.display = 'block';
+        document.getElementById('btnPhoto').style.display = 'none';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('btnPhotoDel').addEventListener('click', function(){
+    curPhoto = null;
+    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('photoPreview').src = '';
+    document.getElementById('btnPhotoDel').style.display = 'none';
+    document.getElementById('btnPhoto').style.display = 'flex';
+    document.getElementById('photoInput').value = '';
+  });
   document.getElementById('fVdr').addEventListener('change', loadAndRenderRec);
   document.getElementById('fTool').addEventListener('change', loadAndRenderRec);
   document.getElementById('fRes').addEventListener('change', loadAndRenderRec);
