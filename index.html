@@ -219,17 +219,31 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .btn-photo-del { width:100%; padding:9px; background:#fff; border:1.5px solid #FFCDD2; color:#C62828; border-radius:9px; font-size:13px; cursor:pointer; margin-top:6px; font-family:inherit; display:none; }
 .rec-photo { width:100%; border-radius:8px; margin-top:8px; max-height:180px; object-fit:cover; }
 /* QR 출력 */
-.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
-.qr-card{background:#fff;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);border:1.5px solid #E0E0E0;}
-.qr-card img{width:110px;height:110px;margin-bottom:6px;border-radius:6px;}
-.qr-ic{font-size:20px;margin-bottom:2px;}
-.qr-nm{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:2px;}
-.qr-cat{font-size:10px;color:#888;}
+.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+.qr-card{background:#fff;border-radius:14px;padding:16px 12px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.10);border:2px solid #E0E0E0;}
+.qr-card img{width:130px;height:130px;margin:8px auto 10px;display:block;border-radius:6px;}
+.qr-ic{font-size:22px;margin-bottom:4px;}
+.qr-nm{font-size:13px;font-weight:700;line-height:1.4;margin-bottom:3px;}
+.qr-cat{font-size:11px;color:#888;margin-bottom:8px;}
+.btn-qr-print{width:100%;padding:9px;background:#1565C0;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .qr-hint{background:#E3F2FD;border-radius:10px;padding:12px;font-size:12px;color:#1565C0;line-height:1.6;margin-bottom:12px;}
+/* QR 단일 인쇄 오버레이 */
+#qrPrintOv{position:fixed;inset:0;background:#fff;z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#qrPrintOv.on{display:flex;}
+#qrPrintOv .qpo-ic{font-size:48px;}
+#qrPrintOv .qpo-nm{font-size:22px;font-weight:800;color:#1A1A1A;}
+#qrPrintOv .qpo-cat{font-size:14px;color:#888;}
+#qrPrintOv img{width:220px;height:220px;border:3px solid #E0E0E0;border-radius:12px;}
+#qrPrintOv .qpo-url{font-size:10px;color:#aaa;margin-top:-6px;max-width:260px;word-break:break-all;text-align:center;}
+.qpo-acts{display:flex;gap:10px;margin-top:6px;}
+.btn-qpo-print{padding:14px 28px;background:#1565C0;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-qpo-close{padding:14px 20px;background:#F5F5F5;color:#888;border:none;border-radius:12px;font-size:15px;cursor:pointer;font-family:inherit;}
 @media print{
-  #adminHd,#adminTabs,.qr-hint{display:none!important;}
-  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-  .qr-card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;}
+  body > *:not(#qrPrintOv){ display:none!important; }
+  #qrPrintOv{ position:static!important; display:flex!important; }
+  .qpo-acts,.btn-qpo-close,.btn-qpo-print{ display:none!important; }
+  #qrPrintOv img{ width:280px;height:280px; }
+  #qrPrintOv .qpo-nm{ font-size:28px; }
 }
 /* 로딩 오버레이 */
 #loadingOv{position:fixed;inset:0;background:rgba(255,255,255,0.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
@@ -354,6 +368,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   </div>
   <div class="card"><div class="card-hd">🏢 업체별 양호율</div><div id="vChart"></div></div>
   <div class="card"><div class="card-hd">🔧 공도구별 수량</div><div id="tChart"></div></div>
+  <button id="btnExportCSV" style="width:100%;padding:14px;background:#2E7D32;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit;">📥 전체 데이터 엑셀(CSV) 내보내기</button>
 </div>
 
 <!-- ADMIN LOGIN -->
@@ -398,6 +413,19 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       <button class="btn-pin" id="btnChangePin">PIN 변경</button>
     </div>
     <div class="set-card"><h3>📊 데이터 현황</h3><div id="cfgStats"></div></div>
+  </div>
+</div>
+
+<!-- QR 단일 인쇄 오버레이 -->
+<div id="qrPrintOv">
+  <div class="qpo-ic" id="qpIc">🔧</div>
+  <div class="qpo-nm" id="qpNm">공도구명</div>
+  <div class="qpo-cat" id="qpCat">카테고리</div>
+  <img id="qpImg" src="" alt="QR">
+  <div class="qpo-url" id="qpUrl"></div>
+  <div class="qpo-acts">
+    <button class="btn-qpo-print" id="btnQpoPrint">🖨️ 인쇄하기</button>
+    <button class="btn-qpo-close" id="btnQpoClose">✕ 닫기</button>
   </div>
 </div>
 
@@ -874,16 +902,56 @@ function renderQRGrid() {
   var grid = document.getElementById('qrPrintGrid');
   if (!grid) return;
   var tools = TOOLS;
-  grid.innerHTML = tools.map(function(t) {
+  grid.innerHTML = '';
+  tools.forEach(function(t) {
     var link = BASE_URL + '?tool=' + encodeURIComponent(t.id);
-    var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=6&data=' + encodeURIComponent(link);
-    return '<div class="qr-card">' +
+    var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(link);
+    var card = document.createElement('div');
+    card.className = 'qr-card';
+    card.innerHTML =
       '<div class="qr-ic">' + (t.icon||'🔧') + '</div>' +
       '<div class="qr-nm">' + t.name + '</div>' +
       '<div class="qr-cat">' + (t.cat||t.category||'') + '</div>' +
-      '<img src="' + qrImg + '" alt="QR">' +
-      '</div>';
-  }).join('');
+      '<img src="' + qrImg + '" alt="QR" loading="lazy">' +
+      '<button class="btn-qr-print">🖨️ 인쇄</button>';
+    card.querySelector('.btn-qr-print').addEventListener('click', function(e){
+      e.stopPropagation();
+      openQRPrint(t, link, qrImg);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function openQRPrint(t, link, qrImg) {
+  document.getElementById('qpIc').textContent = t.icon || '🔧';
+  document.getElementById('qpNm').textContent = t.name;
+  document.getElementById('qpCat').textContent = t.cat || t.category || '';
+  document.getElementById('qpImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=12&data=' + encodeURIComponent(link);
+  document.getElementById('qpUrl').textContent = link;
+  document.getElementById('qrPrintOv').classList.add('on');
+}
+
+function exportCSV() {
+  showLoading('데이터 내보내는 중...');
+  db.from('inspections').select('*').order('inspected_at', {ascending: false}).then(function(res) {
+    hideLoading();
+    if (res.error || !res.data.length) { showToast('내보낼 데이터가 없어요'); return; }
+    var rows = [['날짜','공도구','카테고리','업체','수량','결과','점검자','특이사항']];
+    res.data.forEach(function(r) {
+      var dt = new Date(r.inspected_at);
+      var ds = dt.getFullYear()+'/'+(dt.getMonth()+1).toString().padStart(2,'0')+'/'+dt.getDate().toString().padStart(2,'0')
+        +' '+dt.getHours().toString().padStart(2,'0')+':'+dt.getMinutes().toString().padStart(2,'0');
+      rows.push([ds, r.tool_name, r.category, r.vendor, r.quantity, r.result, r.inspector, r.note||'']);
+    });
+    var csv = '\uFEFF' + rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = '점검기록_'+(new Date().toISOString().slice(0,10))+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ CSV 다운로드 완료');
+  });
 }
 
 async function addVdr() {
@@ -1170,6 +1238,13 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('fTool').addEventListener('change', loadAndRenderRec);
   document.getElementById('fRes').addEventListener('change', loadAndRenderRec);
   document.getElementById('btnChangePin').addEventListener('click', changePin);
+  document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+
+  // QR 인쇄 오버레이
+  document.getElementById('btnQpoPrint').addEventListener('click', function(){ window.print(); });
+  document.getElementById('btnQpoClose').addEventListener('click', function(){
+    document.getElementById('qrPrintOv').classList.remove('on');
+  });
 
   // 앱 시작
   initData();
