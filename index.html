@@ -212,6 +212,19 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .srow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F4F4F4;font-size:14px;}
 .srow:last-child{border-bottom:none;}
 .sval{font-weight:700;color:#1565C0;}
+/* QR 출력 */
+.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.qr-card{background:#fff;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);border:1.5px solid #E0E0E0;}
+.qr-card img{width:110px;height:110px;margin-bottom:6px;border-radius:6px;}
+.qr-ic{font-size:20px;margin-bottom:2px;}
+.qr-nm{font-size:12px;font-weight:700;line-height:1.3;margin-bottom:2px;}
+.qr-cat{font-size:10px;color:#888;}
+.qr-hint{background:#E3F2FD;border-radius:10px;padding:12px;font-size:12px;color:#1565C0;line-height:1.6;margin-bottom:12px;}
+@media print{
+  #adminHd,#adminTabs,.qr-hint{display:none!important;}
+  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .qr-card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;}
+}
 /* 로딩 오버레이 */
 #loadingOv{position:fixed;inset:0;background:rgba(255,255,255,0.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
 #loadingOv.hide{display:none;}
@@ -344,8 +357,9 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 <div id="adminPg">
   <div id="adminHd"><h1>⚙️ 관리자 모드</h1><button id="btnCloseAdmin">✕ 닫기</button></div>
   <div id="adminTabs">
-    <div class="atab on" id="atab-vdr">🏢 업체관리</div>
-    <div class="atab"    id="atab-tl">🔧 공도구관리</div>
+    <div class="atab on" id="atab-vdr">🏢 업체</div>
+    <div class="atab"    id="atab-tl">🔧 공도구</div>
+    <div class="atab"    id="atab-qr">📲 QR출력</div>
     <div class="atab"    id="atab-cfg">🔑 설정</div>
   </div>
   <div class="acont on" id="ac-vdr">
@@ -355,6 +369,10 @@ input,select,textarea{font-family:inherit;font-size:16px;}
   <div class="acont" id="ac-tl">
     <button class="btn-add-tool" id="btnAddTool">+ 새 공도구 추가</button>
     <div id="toolAdm"></div>
+  </div>
+  <div class="acont" id="ac-qr">
+    <div class="qr-hint">📌 아래 QR코드를 출력해서 각 공도구에 부착하세요.<br>스캔하면 해당 공도구 점검 화면이 바로 열려요.</div>
+    <div class="qr-grid" id="qrPrintGrid"></div>
   </div>
   <div class="acont" id="ac-cfg">
     <div class="set-card">
@@ -472,6 +490,15 @@ async function initData() {
   } catch(e) {
     showToast('⚠️ 연결 오류: ' + e.message);
   }
+  // URL 파라미터로 공도구 자동 선택 (?tool=T01)
+  try {
+    var urlP = new URLSearchParams(window.location.search);
+    var preId = urlP.get('tool');
+    if (preId) {
+      var preT = allTools.find(function(t){ return t.id === preId; });
+      if (preT) { setTimeout(function(){ selectTool(preT); }, 300); }
+    }
+  } catch(e) {}
   hideLoading();
 }
 
@@ -796,7 +823,8 @@ function doLogin() {
 function openAdmin() { document.getElementById('adminPg').classList.add('on'); document.getElementById('btnAdmin').classList.add('on'); adminNav('vdr'); }
 function closeAdmin() { document.getElementById('adminPg').classList.remove('on'); document.getElementById('btnAdmin').classList.remove('on'); }
 function adminNav(tab) {
-  ['vdr','tl','cfg'].forEach(function(t){
+  if (tab === 'qr') renderQRGrid();
+  ['vdr','tl','qr','cfg'].forEach(function(t){
     document.getElementById('atab-'+t).classList.toggle('on',t===tab);
     document.getElementById('ac-'+t).classList.toggle('on',t===tab);
   });
@@ -818,6 +846,23 @@ async function renderVdrAdmin() {
     el.appendChild(d);
   });
 }
+function renderQRGrid() {
+  var BASE_URL = 'https://leejinseok9612.github.io/Tools-Check-Service/';
+  var grid = document.getElementById('qrPrintGrid');
+  if (!grid) return;
+  var tools = TOOLS.length ? TOOLS : allTools;
+  grid.innerHTML = tools.map(function(t) {
+    var link = BASE_URL + '?tool=' + encodeURIComponent(t.id);
+    var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=6&data=' + encodeURIComponent(link);
+    return '<div class="qr-card">' +
+      '<div class="qr-ic">' + (t.icon||'🔧') + '</div>' +
+      '<div class="qr-nm">' + t.name + '</div>' +
+      '<div class="qr-cat">' + (t.cat||t.category||'') + '</div>' +
+      '<img src="' + qrImg + '" alt="QR">' +
+      '</div>';
+  }).join('');
+}
+
 async function addVdr() {
   var inp=document.getElementById('newVdrInp'), name=inp.value.trim();
   if(!name){showToast('⚠️ 업체명을 입력하세요');return;}
@@ -953,6 +998,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('pinInp').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
   document.getElementById('atab-vdr').addEventListener('click', function(){ adminNav('vdr'); });
   document.getElementById('atab-tl').addEventListener('click',  function(){ adminNav('tl');  });
+  document.getElementById('atab-qr').addEventListener('click',  function(){ adminNav('qr');  });
   document.getElementById('atab-cfg').addEventListener('click', function(){ adminNav('cfg'); });
   document.getElementById('btnAddVdr').addEventListener('click', addVdr);
   document.getElementById('newVdrInp').addEventListener('keydown', function(e){ if(e.key==='Enter') addVdr(); });
