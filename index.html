@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>공도구 점검 관리</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html, body { height:100%; }
@@ -44,9 +45,33 @@ body {
 .card { background: #fff; border-radius: 14px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 .card-hd { font-size:11px; font-weight:700; color:#888; margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px; }
 #scannerBox {
-  background: #111; border-radius: 16px; height: 180px;
+  background: #111; border-radius: 16px; height: 240px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   position: relative; overflow: hidden; margin-bottom: 14px; cursor: pointer;
+}
+#qrVideo {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; border-radius: 16px; display: none;
+}
+#qrCanvas { display: none; }
+#scanOverlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 2; pointer-events: none;
+}
+#scanStatus {
+  position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;
+  color: #fff; font-size: 11px; background: rgba(0,0,0,0.5);
+  padding: 5px; z-index: 3;
+}
+#btnStartScan {
+  background: #1565C0; color: #fff; border: none; border-radius: 12px;
+  padding: 12px 24px; font-size: 15px; font-weight: 700; cursor: pointer;
+  z-index: 3; font-family: inherit;
+}
+#btnStopScan {
+  position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5);
+  color: #fff; border: none; border-radius: 8px; padding: 7px 12px;
+  font-size: 12px; cursor: pointer; z-index: 4; display: none; font-family: inherit;
 }
 .sc-corner { position:absolute; width:40px; height:40px; border:3px solid #2196F3; }
 .tl{top:18px;left:18px;border-right:none;border-bottom:none;border-radius:5px 0 0 0;}
@@ -227,11 +252,16 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 <!-- PAGE: SCAN -->
 <div class="page on" id="page-scan">
   <div id="scannerBox">
-    <div class="sc-corner tl"></div><div class="sc-corner tr"></div>
-    <div class="sc-corner bl"></div><div class="sc-corner br"></div>
-    <div class="sc-line"></div>
-    <div class="sc-main">📷 QR코드 스캔</div>
-    <div class="sc-sub">또는 아래에서 공도구 선택</div>
+    <video id="qrVideo" playsinline autoplay muted></video>
+    <canvas id="qrCanvas"></canvas>
+    <div id="scanOverlay">
+      <div class="sc-corner tl"></div><div class="sc-corner tr"></div>
+      <div class="sc-corner bl"></div><div class="sc-corner br"></div>
+      <div class="sc-line"></div>
+    </div>
+    <button id="btnStartScan">📷 카메라로 QR 스캔</button>
+    <button id="btnStopScan">✕ 닫기</button>
+    <div id="scanStatus"></div>
   </div>
   <div id="toolSelWrap">
     <div id="searchWrap"><span>🔍</span><input type="search" id="srchInput" placeholder="공도구 검색..."></div>
@@ -930,7 +960,81 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btnAddCe').addEventListener('click', addCeRow);
   document.getElementById('btnMdCan').addEventListener('click', closeMd);
   document.getElementById('btnMdSave').addEventListener('click', saveTool);
-  document.getElementById('scannerBox').addEventListener('click', function(){ showToast('📷 실제 앱 연동 시 카메라 QR 스캔 작동'); });
+  // QR 카메라 스캔
+  var qrStream = null;
+  var qrAnimFrame = null;
+  var qrVideo = document.getElementById('qrVideo');
+  var qrCanvas = document.getElementById('qrCanvas');
+  var qrCtx = qrCanvas.getContext('2d');
+  var btnStart = document.getElementById('btnStartScan');
+  var btnStop = document.getElementById('btnStopScan');
+  var scanStatus = document.getElementById('scanStatus');
+
+  function startQRScan() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showToast('이 브라우저는 카메라를 지원하지 않아요'); return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(function(stream) {
+        qrStream = stream;
+        qrVideo.srcObject = stream;
+        qrVideo.style.display = 'block';
+        btnStart.style.display = 'none';
+        btnStop.style.display = 'block';
+        scanStatus.textContent = '📷 QR코드를 카메라에 맞춰주세요';
+        document.querySelector('.sc-main') && (document.querySelector('.sc-main').style.display = 'none');
+        qrVideo.onloadedmetadata = function() { qrVideo.play(); scanQRLoop(); };
+      })
+      .catch(function(err) {
+        showToast('카메라 권한을 허용해주세요');
+      });
+  }
+
+  function scanQRLoop() {
+    if (!qrStream) return;
+    if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+      qrCanvas.width = qrVideo.videoWidth;
+      qrCanvas.height = qrVideo.videoHeight;
+      qrCtx.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
+      var imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+      var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if (code) {
+        stopQRScan();
+        handleQRResult(code.data);
+        return;
+      }
+    }
+    qrAnimFrame = requestAnimationFrame(scanQRLoop);
+  }
+
+  function stopQRScan() {
+    if (qrStream) { qrStream.getTracks().forEach(function(t){ t.stop(); }); qrStream = null; }
+    if (qrAnimFrame) { cancelAnimationFrame(qrAnimFrame); qrAnimFrame = null; }
+    qrVideo.style.display = 'none';
+    btnStart.style.display = 'block';
+    btnStop.style.display = 'none';
+    scanStatus.textContent = '';
+  }
+
+  function handleQRResult(data) {
+    showToast('✅ QR 인식: ' + data);
+    // URL 파라미터에서 tool ID 추출: ?tool=TOOL_ID
+    try {
+      var url = new URL(data);
+      var toolId = url.searchParams.get('tool');
+      if (toolId) {
+        var found = allTools.find(function(t){ return t.id === toolId; });
+        if (found) { selectTool(found); return; }
+      }
+    } catch(e) {}
+    // URL이 아니면 tool ID 직접 매칭
+    var found = allTools.find(function(t){ return t.id === data || t.name === data; });
+    if (found) { selectTool(found); }
+    else { showToast('⚠️ 등록되지 않은 QR코드예요'); }
+  }
+
+  btnStart.addEventListener('click', function(e){ e.stopPropagation(); startQRScan(); });
+  btnStop.addEventListener('click', function(e){ e.stopPropagation(); stopQRScan(); });
   document.getElementById('srchInput').addEventListener('input', renderGrid);
   document.getElementById('qMinus').addEventListener('click', function(){ qty=Math.max(1,qty-1); document.getElementById('qtyNum').textContent=qty; });
   document.getElementById('qPlus').addEventListener('click',  function(){ qty++; document.getElementById('qtyNum').textContent=qty; });
