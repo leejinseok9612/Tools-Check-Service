@@ -200,8 +200,31 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .qpo-acts{display:flex;gap:10px;margin-top:6px;}
 .btn-qpo-print{padding:14px 28px;background:#1565C0;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;}
 .btn-qpo-close{padding:14px 20px;background:#F5F5F5;color:#888;border:none;border-radius:12px;font-size:15px;cursor:pointer;font-family:inherit;}
+/* 점검 결과 스티커 */
+#stickerOv{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9100;display:none;align-items:center;justify-content:center;padding:20px;}
+#stickerOv.on{display:flex;}
+#stickerBox{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:380px;text-align:center;}
+#stickerBox h3{font-size:15px;font-weight:700;color:#555;margin-bottom:16px;}
+.sticker{width:100%;border-radius:16px;padding:22px 18px;margin-bottom:8px;position:relative;overflow:hidden;}
+.sticker.good{background:linear-gradient(135deg,#2E7D32,#43A047);}
+.sticker.bad {background:linear-gradient(135deg,#B71C1C,#E53935);}
+.sticker-mark{font-size:52px;margin-bottom:6px;line-height:1;}
+.sticker-result{font-size:36px;font-weight:900;color:#fff;letter-spacing:4px;margin-bottom:10px;}
+.sticker-tool{font-size:18px;font-weight:800;color:#fff;margin-bottom:4px;}
+.sticker-cat{font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:14px;}
+.sticker-divider{border:none;border-top:1.5px solid rgba(255,255,255,0.3);margin:0 0 14px;}
+.sticker-row{display:flex;justify-content:space-between;color:rgba(255,255,255,0.9);font-size:12px;margin-bottom:5px;}
+.sticker-row span:first-child{opacity:.75;}
+.sticker-row span:last-child{font-weight:700;}
+.sticker-watermark{position:absolute;right:-10px;bottom:-14px;font-size:80px;opacity:.08;line-height:1;}
+.sticker-acts{display:flex;gap:10px;margin-top:16px;}
+.btn-sticker-print{flex:1;padding:14px;background:#1565C0;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-sticker-close{padding:14px 18px;background:#F5F5F5;color:#888;border:none;border-radius:12px;font-size:14px;cursor:pointer;font-family:inherit;}
 @media print{
-  body > *:not(#qrPrintOv){ display:none!important; }
+  body > *:not(#stickerOv):not(#qrPrintOv){ display:none!important; }
+  #stickerOv{ position:static!important;display:block!important;background:none!important;padding:0!important; }
+  #stickerBox{ box-shadow:none!important;max-width:100%!important; }
+  .sticker-acts,h3{ display:none!important; }
   #qrPrintOv{ position:static!important; display:flex!important; }
   .qpo-acts,.btn-qpo-close,.btn-qpo-print{ display:none!important; }
   #qrPrintOv img{ width:280px;height:280px; }
@@ -370,6 +393,29 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       <div id="gsheetStatus" style="font-size:12px;margin-top:8px;color:#888;"></div>
     </div>
     <div class="set-card"><h3>📊 데이터 현황</h3><div id="cfgStats"></div></div>
+  </div>
+</div>
+
+<!-- 점검 결과 스티커 오버레이 -->
+<div id="stickerOv">
+  <div id="stickerBox">
+    <h3>📋 점검 완료 스티커</h3>
+    <div class="sticker" id="stickerCard">
+      <div class="sticker-mark" id="stiMark">✅</div>
+      <div class="sticker-result" id="stiResult">양호</div>
+      <div class="sticker-tool" id="stiTool">공도구명</div>
+      <div class="sticker-cat" id="stiCat">카테고리</div>
+      <hr class="sticker-divider">
+      <div class="sticker-row"><span>업체</span><span id="stiVdr">-</span></div>
+      <div class="sticker-row"><span>수량</span><span id="stiQty">-</span></div>
+      <div class="sticker-row"><span>점검자</span><span id="stiInsp">-</span></div>
+      <div class="sticker-row"><span>점검일</span><span id="stiDate">-</span></div>
+      <div class="sticker-watermark" id="stiWatermark">✅</div>
+    </div>
+    <div class="sticker-acts">
+      <button class="btn-sticker-print" id="btnStickerPrint">🖨️ 스티커 인쇄</button>
+      <button class="btn-sticker-close" id="btnStickerClose">닫기</button>
+    </div>
   </div>
 </div>
 
@@ -673,6 +719,10 @@ async function submitInsp() {
   if (res.error) { showToast('⚠️ 저장 실패: ' + res.error.message); return; }
   showToast('✅ 완료 | '+vdr+' · '+curTool.name+' · '+qty+'개 · '+result);
 
+  // 스티커 오버레이 표시
+  showSticker(result, curTool, vdr, qty,
+    document.getElementById('inspector').value || '미입력');
+
   // Google Sheets 자동 전송
   if (GSHEET_URL) {
     var dt = new Date();
@@ -699,6 +749,26 @@ async function submitInsp() {
   }
 
   setTimeout(function(){ resetInsp(); switchTab('rec'); }, 1500);
+}
+
+function showSticker(result, tool, vdr, qty, inspector) {
+  var isGood = result === '양호';
+  var card = document.getElementById('stickerCard');
+  card.className = 'sticker ' + (isGood ? 'good' : 'bad');
+  document.getElementById('stiMark').textContent    = isGood ? '✅' : '❌';
+  document.getElementById('stiResult').textContent  = result;
+  document.getElementById('stiTool').textContent    = tool.name;
+  document.getElementById('stiCat').textContent     = tool.cat || '';
+  document.getElementById('stiVdr').textContent     = vdr;
+  document.getElementById('stiQty').textContent     = qty + '개';
+  document.getElementById('stiInsp').textContent    = inspector;
+  document.getElementById('stiWatermark').textContent = isGood ? '✅' : '❌';
+  var now = new Date();
+  document.getElementById('stiDate').textContent =
+    now.getFullYear() + '.' +
+    String(now.getMonth()+1).padStart(2,'0') + '.' +
+    String(now.getDate()).padStart(2,'0');
+  document.getElementById('stickerOv').classList.add('on');
 }
 
 function resetInsp() {
@@ -1157,6 +1227,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btnQpoPrint').addEventListener('click', function(){ window.print(); });
   document.getElementById('btnQpoClose').addEventListener('click', function(){
     document.getElementById('qrPrintOv').classList.remove('on');
+  });
+
+  // 스티커 인쇄 오버레이
+  document.getElementById('btnStickerPrint').addEventListener('click', function(){ window.print(); });
+  document.getElementById('btnStickerClose').addEventListener('click', function(){
+    document.getElementById('stickerOv').classList.remove('on');
   });
 
   // 앱 시작
