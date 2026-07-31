@@ -90,8 +90,9 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
 .si{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
 .si .sn{font-size:19px;font-weight:800;} .si .sl{font-size:10px;color:#888;margin-top:2px;}
-.rc{background:#fff;border-radius:12px;padding:13px;margin-bottom:9px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:4px solid;}
-.rc.g{border-left-color:#2E7D32;} .rc.b{border-left-color:#C62828;}
+.rc{border-radius:12px;padding:13px;margin-bottom:9px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid;}
+.rc.g{background:rgba(76,175,80,0.18);border-left-color:#2E7D32;}
+.rc.b{background:rgba(244,67,54,0.18);border-left-color:#C62828;}
 .rc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
 .rc-nm{font-size:14px;font-weight:700;}
 .rbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;}
@@ -649,6 +650,16 @@ async function submitInsp() {
     note: document.getElementById('noteInput').value || '',
     photo: curPhoto || null
   });
+  // photo 컬럼 없을 때 자동 재시도 (컬럼 미추가 대비)
+  if (res.error && res.error.message && res.error.message.includes('photo')) {
+    res = await db.from('inspections').insert({
+      tool_id: curTool.id, tool_name: curTool.name, category: curTool.cat,
+      vendor: vdr, quantity: qty, result: result, items: items,
+      inspector: document.getElementById('inspector').value || '미입력',
+      note: document.getElementById('noteInput').value || ''
+    });
+    if (!res.error) showToast('⚠️ 사진 저장 제외됨 — Supabase에 photo 컬럼 추가 필요');
+  }
   hideLoading();
 
   if (res.error) { showToast('⚠️ 저장 실패: ' + res.error.message); return; }
