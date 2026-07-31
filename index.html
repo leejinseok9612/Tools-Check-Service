@@ -362,6 +362,13 @@ input,select,textarea{font-family:inherit;font-size:16px;}
       <input type="password" class="set-input" id="newPin2" maxlength="4" placeholder="새 PIN 재입력">
       <button class="btn-pin" id="btnChangePin">PIN 변경</button>
     </div>
+    <div class="set-card">
+      <h3>📊 Google Sheets 연동</h3>
+      <p style="font-size:12px;color:#888;margin-bottom:10px;">점검 제출 시 Google Sheets에 자동으로 기록됩니다.</p>
+      <input type="text" class="set-input" id="gsheetUrlInp" placeholder="Apps Script 웹앱 URL" style="font-size:13px;">
+      <button class="btn-pin" id="btnSaveGsheet" style="background:#0F9D58;">🔗 URL 저장</button>
+      <div id="gsheetStatus" style="font-size:12px;margin-top:8px;color:#888;"></div>
+    </div>
     <div class="set-card"><h3>📊 데이터 현황</h3><div id="cfgStats"></div></div>
   </div>
 </div>
@@ -402,6 +409,7 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 var SUPABASE_URL = 'https://mjjhxoqcsmstcqhidgrc.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_zAPQd2iGRT4kV4f_so-Z9w_dgmhwQmM';
 var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxdDlONhn-Ps7H-0yXgQRR0LJFx-hwq1Q0Z0_K1NXG2NUr88E1avzgwrRqMtI5JO5U-/exec';
 
 /* ============================================================
    STATE
@@ -664,6 +672,32 @@ async function submitInsp() {
 
   if (res.error) { showToast('⚠️ 저장 실패: ' + res.error.message); return; }
   showToast('✅ 완료 | '+vdr+' · '+curTool.name+' · '+qty+'개 · '+result);
+
+  // Google Sheets 자동 전송
+  if (GSHEET_URL) {
+    var dt = new Date();
+    var ds = dt.getFullYear()+'/'
+      +(dt.getMonth()+1).toString().padStart(2,'0')+'/'
+      +dt.getDate().toString().padStart(2,'0')+' '
+      +dt.getHours().toString().padStart(2,'0')+':'
+      +dt.getMinutes().toString().padStart(2,'0');
+    fetch(GSHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: ds,
+        tool_name: curTool.name,
+        category: curTool.cat,
+        vendor: vdr,
+        quantity: qty,
+        result: result,
+        inspector: document.getElementById('inspector').value || '미입력',
+        note: document.getElementById('noteInput').value || ''
+      })
+    }).catch(function(){});
+  }
+
   setTimeout(function(){ resetInsp(); switchTab('rec'); }, 1500);
 }
 
@@ -1105,6 +1139,19 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('fRes').addEventListener('change', loadAndRenderRec);
   document.getElementById('btnChangePin').addEventListener('click', changePin);
   document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+
+  // Google Sheets 설정
+  var gsheetInp = document.getElementById('gsheetUrlInp');
+  var gsheetStatus = document.getElementById('gsheetStatus');
+  gsheetInp.value = GSHEET_URL || '';
+  if (GSHEET_URL) gsheetStatus.innerHTML = '✅ 연동 중: <span style="color:#0F9D58;font-weight:700;">Google Sheets</span>';
+  document.getElementById('btnSaveGsheet').addEventListener('click', function(){
+    var url = gsheetInp.value.trim();
+    if (!url) { gsheetStatus.textContent = '⚠️ URL을 입력해주세요'; return; }
+    GSHEET_URL = url;
+    gsheetStatus.innerHTML = '✅ 저장됨 — 다음 제출부터 자동 전송돼요';
+    showToast('✅ Google Sheets URL 저장 완료');
+  });
 
   // QR 인쇄 오버레이
   document.getElementById('btnQpoPrint').addEventListener('click', function(){ window.print(); });
