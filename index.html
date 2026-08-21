@@ -374,8 +374,17 @@ input,select,textarea{font-family:inherit;font-size:16px;}
     <div id="toolAdm"></div>
   </div>
   <div class="acont" id="ac-qr">
-    <div class="qr-hint">📌 아래 QR코드를 출력해서 각 공도구에 부착하세요.<br>스캔하면 해당 공도구 점검 화면이 바로 열려요.</div>
-    <div class="qr-grid" id="qrPrintGrid"></div>
+    <div class="qr-hint">📌 아래 QR코드 <b>1개</b>를 출력해서 현장 잘 보이는 곳에 부착하세요.<br>스캔하면 공도구 목록이 열리고, 원하는 공도구를 선택해 점검할 수 있어요.</div>
+    <div id="singleQRWrap" style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:16px;">
+      <div style="background:#fff;border-radius:18px;padding:24px 28px;box-shadow:0 2px 12px rgba(0,0,0,.12);text-align:center;width:100%;max-width:320px;">
+        <div style="font-size:30px;margin-bottom:8px;">🏗️</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">공도구 점검 관리</div>
+        <div style="font-size:11px;color:#888;margin-bottom:14px;">QR 스캔 → 공도구 선택 → 점검</div>
+        <img id="singleQRImg" src="" alt="QR" style="width:200px;height:200px;display:block;margin:0 auto 14px;border-radius:8px;border:1px solid #eee;">
+        <div id="singleQRUrl" style="font-size:10px;color:#aaa;word-break:break-all;margin-bottom:14px;"></div>
+        <button id="btnSingleQRPrint" style="width:100%;padding:13px;background:#1565C0;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ 크게 보기 / 인쇄</button>
+      </div>
+    </div>
   </div>
   <div class="acont" id="ac-cfg">
     <div class="set-card">
@@ -541,15 +550,6 @@ async function initData() {
   } catch(e) {
     showToast('⚠️ 연결 오류: ' + e.message);
   }
-  // URL 파라미터로 공도구 자동 선택 (?tool=T01)
-  try {
-    var urlP = new URLSearchParams(window.location.search);
-    var preId = urlP.get('tool');
-    if (preId) {
-      var preT = TOOLS.find(function(t){ return t.id === preId; });
-      if (preT) { setTimeout(function(){ selectTool(preT.id); }, 300); }
-    }
-  } catch(e) {}
   hideLoading();
 }
 
@@ -1067,37 +1067,26 @@ async function renderVdrAdmin() {
 }
 function renderQRGrid() {
   var BASE_URL = 'https://leejinseok9612.github.io/Tools-Check-Service/';
-  var grid = document.getElementById('qrPrintGrid');
-  if (!grid) return;
-  var tools = TOOLS;
-  grid.innerHTML = '';
-  tools.forEach(function(t) {
-    var link = BASE_URL + '?tool=' + encodeURIComponent(t.id);
-    var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=' + encodeURIComponent(link);
-    var card = document.createElement('div');
-    card.className = 'qr-card';
-    card.innerHTML =
-      '<div class="qr-ic">' + (t.icon||'🔧') + '</div>' +
-      '<div class="qr-nm">' + t.name + '</div>' +
-      '<div class="qr-cat">' + (t.cat||t.category||'') + '</div>' +
-      '<img src="' + qrImg + '" alt="QR" loading="lazy">' +
-      '<button class="btn-qr-print">🖨️ 인쇄</button>';
-    card.querySelector('.btn-qr-print').addEventListener('click', function(e){
-      e.stopPropagation();
-      openQRPrint(t, link, qrImg);
-    });
-    grid.appendChild(card);
+  var qrImg = document.getElementById('singleQRImg');
+  var qrUrl = document.getElementById('singleQRUrl');
+  if (!qrImg) return;
+  var imgSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=14&data=' + encodeURIComponent(BASE_URL);
+  qrImg.src = imgSrc;
+  qrUrl.textContent = BASE_URL;
+  document.getElementById('btnSingleQRPrint').addEventListener('click', function(){
+    openSingleQRPrint(BASE_URL, imgSrc);
   });
 }
 
-function openQRPrint(t, link, qrImg) {
-  document.getElementById('qpIc').textContent = t.icon || '🔧';
-  document.getElementById('qpNm').textContent = t.name;
-  document.getElementById('qpCat').textContent = t.cat || t.category || '';
-  document.getElementById('qpImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=12&data=' + encodeURIComponent(link);
-  document.getElementById('qpUrl').textContent = link;
+function openSingleQRPrint(url, imgSrc) {
+  document.getElementById('qpIc').textContent = '🏗️';
+  document.getElementById('qpNm').textContent = '공도구 점검 관리';
+  document.getElementById('qpCat').textContent = 'QR 스캔 → 공도구 선택 → 점검';
+  document.getElementById('qpImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=12&data=' + encodeURIComponent(url);
+  document.getElementById('qpUrl').textContent = url;
   document.getElementById('qrPrintOv').classList.add('on');
 }
+
 
 function exportCSV() {
   showLoading('데이터 내보내는 중...');
