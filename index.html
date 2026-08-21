@@ -105,7 +105,11 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .rdet.on{display:block;}
 .drow{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:#888;}
 .drow span:last-child{font-weight:700;}
-.expbtn{width:100%;padding:6px;background:none;border:none;font-size:12px;color:#1565C0;cursor:pointer;margin-top:6px;font-family:inherit;}
+.rec-btns{display:flex;gap:8px;margin-top:8px;}
+.btn-rec-sticker{flex:1;padding:9px 10px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-sticker-g{background:#E8F5E9;color:#2E7D32;}
+.btn-sticker-b{background:#FFEBEE;color:#B71C1C;}
+.expbtn{padding:6px;background:none;border:none;font-size:12px;color:#1565C0;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
 .ki{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
 .ki .kn{font-size:20px;font-weight:800;} .ki .kl{font-size:10px;color:#888;margin-top:2px;}
@@ -818,12 +822,12 @@ async function submitInsp() {
 
 var _stickerData = {};
 
-function showSticker(result, tool, vdr, qty, inspector) {
+function showSticker(result, tool, vdr, qty, inspector, dateOverride) {
   var isGood = result === '양호';
   var now = new Date();
-  var dateStr = now.getFullYear() + '.' +
+  var dateStr = dateOverride || (now.getFullYear() + '.' +
     String(now.getMonth()+1).padStart(2,'0') + '.' +
-    String(now.getDate()).padStart(2,'0');
+    String(now.getDate()).padStart(2,'0'));
 
   _stickerData = { result: result, isGood: isGood, tool: tool, vdr: vdr, qty: qty, inspector: inspector, date: dateStr };
 
@@ -1035,9 +1039,17 @@ async function loadAndRenderRec() {
     var note = r.note ? '<span class="rtag rtag-warn">📝 '+r.note+'</span>' : '';
     var d = document.createElement('div');
     d.className = 'rc '+(r.result==='양호'?'g':'b');
+    var isGood = r.result==='양호';
+    var toolObj = TOOLS.find(function(t){ return t.name===r.tool_name; }) || {icon:'🔧', name:r.tool_name, cat:r.category};
+    // 점검일 포맷 (스티커용)
+    var dtObj = new Date(r.inspected_at);
+    var stickerDate = dtObj.getFullYear()+'.'
+      +String(dtObj.getMonth()+1).padStart(2,'0')+'.'
+      +String(dtObj.getDate()).padStart(2,'0');
+
     d.innerHTML =
-      '<div class="rc-top"><div class="rc-nm">'+r.tool_name+'</div>'
-      +'<span class="rbadge '+(r.result==='양호'?'rbg':'rbb')+'">'+(r.result==='양호'?'✅':'❌')+' '+r.result+'</span></div>'
+      '<div class="rc-top"><div class="rc-nm">'+toolObj.icon+' '+r.tool_name+'</div>'
+      +'<span class="rbadge '+(isGood?'rbg':'rbb')+'">'+(isGood?'✅':'❌')+' '+r.result+'</span></div>'
       +'<div class="rtags">'
       +'<span class="rtag">🏢 '+r.vendor+'</span>'
       +'<span class="rtag rtag-qty">📦 '+r.quantity+'개</span>'
@@ -1045,11 +1057,21 @@ async function loadAndRenderRec() {
       +'<span class="rtag">👤 '+r.inspector+'</span>'
       +'<span class="rtag">🕐 '+ds+'</span>'
       +note+'</div>'
+      +'<div class="rec-btns">'
+      +'<button class="btn-rec-sticker '+(isGood?'btn-sticker-g':'btn-sticker-b')+'" data-rid="'+r.id+'">'
+      +(isGood?'🟢 사용가능 스티커':'🔴 사용불가 스티커')+'</button>'
+      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세'+(r.photo?' 📸':'')+'</button>'
+      +'</div>'
       +'<div class="rdet" id="det'+r.id+'">'
       +(r.items||[]).map(function(it){ return '<div class="drow"><span>· '+it.t+'</span><span style="color:'+(it.r==='good'?'#2E7D32':'#C62828')+';">'+(it.r==='good'?'양호':'불량')+'</span></div>'; }).join('')
       +(r.photo ? '<img class="rec-photo" src="'+r.photo+'" alt="공도구 사진">' : '')
-      +'</div>'
-      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세'+(r.photo?' 📸':'')+'</button>';
+      +'</div>';
+
+    // 스티커 버튼
+    d.querySelector('.btn-rec-sticker').addEventListener('click', function(e){
+      e.stopPropagation();
+      showSticker(r.result, toolObj, r.vendor, r.quantity, r.inspector, stickerDate);
+    });
     d.querySelector('.expbtn').addEventListener('click', function(){
       var rid=this.getAttribute('data-id');
       var el=document.getElementById('det'+rid);
