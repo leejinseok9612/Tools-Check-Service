@@ -105,11 +105,15 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 .rdet.on{display:block;}
 .drow{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:#888;}
 .drow span:last-child{font-weight:700;}
-.rec-btns{display:flex;gap:8px;margin-top:8px;}
+.rec-btns{display:flex;gap:8px;margin-top:8px;align-items:center;}
 .btn-rec-sticker{flex:1;padding:9px 10px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .btn-sticker-g{background:#E8F5E9;color:#2E7D32;}
 .btn-sticker-b{background:#FFEBEE;color:#B71C1C;}
 .expbtn{padding:6px;background:none;border:none;font-size:12px;color:#1565C0;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-rec-del{padding:8px 10px;background:#FFEBEE;color:#C62828;border:none;border-radius:10px;font-size:15px;cursor:pointer;flex-shrink:0;}
+/* 관리자 전용 요소: 기본 숨김, 관리자 모드에서만 표시 */
+.admin-only{display:none;}
+body.admin-on .admin-only{display:flex;}
 .kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
 .ki{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
 .ki .kn{font-size:20px;font-weight:800;} .ki .kl{font-size:10px;color:#888;margin-top:2px;}
@@ -517,6 +521,7 @@ var chkRes   = {};
 var editId   = null;
 var curPhoto = null; // base64 사진
 var ceSeq    = 200;
+var isAdmin  = false;
 
 /* ============================================================
    DEFAULT SEED DATA
@@ -1060,7 +1065,8 @@ async function loadAndRenderRec() {
       +'<div class="rec-btns">'
       +'<button class="btn-rec-sticker '+(isGood?'btn-sticker-g':'btn-sticker-b')+'" data-rid="'+r.id+'">'
       +(isGood?'🟢 사용가능 스티커':'🔴 사용불가 스티커')+'</button>'
-      +'<button class="expbtn" data-id="'+r.id+'">▼ 점검항목 상세'+(r.photo?' 📸':'')+'</button>'
+      +'<button class="expbtn" data-id="'+r.id+'">▼ 상세'+(r.photo?' 📸':'')+'</button>'
+      +'<button class="btn-rec-del admin-only" data-rid="'+r.id+'" title="기록 삭제">🗑️</button>'
       +'</div>'
       +'<div class="rdet" id="det'+r.id+'">'
       +(r.items||[]).map(function(it){ return '<div class="drow"><span>· '+it.t+'</span><span style="color:'+(it.r==='good'?'#2E7D32':'#C62828')+';">'+(it.r==='good'?'양호':'불량')+'</span></div>'; }).join('')
@@ -1072,11 +1078,17 @@ async function loadAndRenderRec() {
       e.stopPropagation();
       showSticker(r.result, toolObj, r.vendor, r.quantity, r.inspector, stickerDate);
     });
+    // 상세 펼치기
     d.querySelector('.expbtn').addEventListener('click', function(){
       var rid=this.getAttribute('data-id');
       var el=document.getElementById('det'+rid);
       el.classList.toggle('on');
-      this.textContent=el.classList.contains('on')?'▲ 접기':'▼ 점검항목 상세';
+      this.textContent=el.classList.contains('on')?'▲ 접기':'▼ 상세'+(r.photo?' 📸':'');
+    });
+    // 삭제 버튼 (관리자 전용)
+    d.querySelector('.btn-rec-del').addEventListener('click', function(e){
+      e.stopPropagation();
+      delInsp(r.id, r.tool_name, ds);
     });
     rl.appendChild(d);
   });
@@ -1171,8 +1183,19 @@ function doLogin() {
 /* ============================================================
    ADMIN
 ============================================================ */
-function openAdmin() { document.getElementById('adminPg').classList.add('on'); document.getElementById('btnAdmin').classList.add('on'); adminNav('vdr'); }
-function closeAdmin() { document.getElementById('adminPg').classList.remove('on'); document.getElementById('btnAdmin').classList.remove('on'); }
+function openAdmin() {
+  isAdmin = true;
+  document.getElementById('adminPg').classList.add('on');
+  document.getElementById('btnAdmin').classList.add('on');
+  document.body.classList.add('admin-on');
+  adminNav('vdr');
+}
+function closeAdmin() {
+  isAdmin = false;
+  document.getElementById('adminPg').classList.remove('on');
+  document.getElementById('btnAdmin').classList.remove('on');
+  document.body.classList.remove('admin-on');
+}
 function adminNav(tab) {
   if (tab === 'qr') renderQRGrid();
   ['vdr','tl','qr','cfg'].forEach(function(t){
@@ -1318,6 +1341,16 @@ async function renderToolAdm() {
     });
   });
 }
+async function delInsp(id, toolName, dateStr) {
+  if (!confirm('[' + toolName + '] ' + dateStr + '\n이 점검 기록을 삭제하시겠습니까?')) return;
+  showLoading('삭제 중...');
+  var res = await db.from('inspections').delete().eq('id', id);
+  hideLoading();
+  if (res.error) { showToast('⚠️ 삭제 실패: ' + res.error.message); return; }
+  showToast('🗑️ 점검 기록이 삭제되었습니다');
+  loadAndRenderRec();
+}
+
 async function delTool(id,name) {
   if(!confirm('"'+name+'"을 삭제하시겠습니까?')) return;
   showLoading('삭제 중...');
