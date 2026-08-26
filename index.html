@@ -54,10 +54,19 @@ body {
 .tc { background:#fff; border:1.5px solid #E0E0E0; border-radius:12px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; text-align:center; cursor:pointer; min-height:108px; justify-content:center; }
 .tc:active { background:#E3F2FD; border-color:#1565C0; }
 .tc .ic{font-size:28px;margin-bottom:7px;} .tc .nm{font-size:13px;font-weight:700;line-height:1.3;} .tc .ct{font-size:10px;color:#888;margin-top:2px;} .tc .cnt{font-size:11px;color:#1565C0;margin-top:4px;font-weight:700;}
-#inspHeader { background:linear-gradient(135deg,#1565C0,#0D47A1); color:#fff; border-radius:14px; padding:14px 15px; margin-bottom:12px; }
-#inspHeader .iname{font-size:18px;font-weight:700;margin-bottom:5px;}
+/* 카테고리 카드 그리드 */
+#catGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.cat-card{border-radius:14px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;color:#fff;min-height:120px;justify-content:center;gap:6px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);transition:transform .1s;}
+.cat-card:active{transform:scale(0.97);}
+.cat-card .cat-ic{font-size:34px;line-height:1;}
+.cat-card .cat-nm{font-size:15px;font-weight:800;letter-spacing:.3px;}
+.cat-card .cat-desc{font-size:10px;opacity:.8;line-height:1.4;}
+.cat-card .cat-cnt{font-size:10px;background:rgba(255,255,255,0.22);padding:2px 8px;border-radius:10px;margin-top:2px;}
+/* 점검 헤더 */
+#inspHeader{color:#fff;border-radius:14px;padding:16px 15px;margin-bottom:12px;}
+#inspHeader .iname{font-size:19px;font-weight:800;margin-bottom:5px;}
 #inspHeader .imeta{display:flex;gap:7px;flex-wrap:wrap;}
-.ibadge{background:rgba(255,255,255,0.18);padding:3px 8px;border-radius:20px;font-size:11px;}
+.ibadge{background:rgba(255,255,255,0.20);padding:3px 9px;border-radius:20px;font-size:11px;}
 #vdrSel { width:100%; padding:14px 38px 14px 14px; border:1.5px solid #E0E0E0; border-radius:11px; font-size:16px; outline:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 13px center; -webkit-appearance:none; appearance:none; color:#1A1A1A; cursor:pointer; font-family:inherit; }
 #vdrSel:focus { border-color:#1565C0; }
 #qtyWrap { display:flex; align-items:center; gap:12px; background:#F8F8F8; border-radius:12px; padding:13px 14px; margin-bottom:12px; }
@@ -284,12 +293,18 @@ body.admin-on .admin-only{display:flex;}
 <!-- PAGE: SCAN -->
 <div class="page on" id="page-scan">
   <div id="toolSelWrap">
-    <div id="searchWrap"><span>🔍</span><input type="search" id="srchInput" placeholder="공도구 검색..."></div>
-    <div id="chipWrap"></div>
-    <div id="toolGrid"></div>
+    <div style="padding:10px 0 6px;text-align:center;">
+      <div style="font-size:14px;font-weight:700;color:#333;margin-bottom:4px;">점검 항목 선택</div>
+      <div style="font-size:12px;color:#aaa;">해당 카테고리를 탭하여 점검을 시작하세요</div>
+    </div>
+    <div id="catGrid"></div>
   </div>
   <div id="inspWrap" style="display:none;">
     <div id="inspHeader"></div>
+    <div class="card">
+      <div class="card-hd">🔧 장비 / 공도구 명칭 <span style="font-weight:400;color:#bbb;font-size:10px;">선택사항</span></div>
+      <input type="text" id="equipName" placeholder="예: 전동 그라인더, 굴착기 1호기, 이동식 비계 A..." style="width:100%;padding:12px 13px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:15px;outline:none;font-family:inherit;color:#1A1A1A;">
+    </div>
     <div class="card">
       <div class="card-hd">🏢 업체 선택</div>
       <select id="vdrSel"><option value="">-- 업체를 선택하세요 --</option></select>
@@ -353,8 +368,9 @@ body.admin-on .admin-only{display:flex;}
     <div class="card-hd">📊 업체 × 공도구 피벗</div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="pt" id="pivotTbl"></table></div>
   </div>
-  <div class="card"><div class="card-hd">🏢 업체별 양호율</div><div id="vChart"></div></div>
-  <div class="card"><div class="card-hd">🔧 공도구별 수량</div><div id="tChart"></div></div>
+  <div class="card"><div class="card-hd">🏢 업체별 점검 현황</div><div id="vChart"></div></div>
+  <div class="card"><div class="card-hd">👤 점검자별 점검 현황</div><div id="inspChart"></div></div>
+  <div class="card"><div class="card-hd">📋 카테고리별 점검 수량</div><div id="tChart"></div></div>
   <button id="btnExportCSV" style="width:100%;padding:14px;background:#2E7D32;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit;">📥 전체 데이터 엑셀(CSV) 내보내기</button>
 </div>
 
@@ -517,17 +533,66 @@ var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbyXOs2oxkpl5MLuego0-nk
 ============================================================ */
 var PIN      = '1234';
 var VENDORS  = [];
-var TOOLS    = [];
-var CATS     = ['전체','전동공구','용접장비','안전장비','이동장비','인양장비','측정장비'];
-var curCat   = '전체';
-var curTool  = null;
+var TOOLS    = []; // 관리자 도구 목록 (어드민 전용)
+var curCat   = null; // 선택된 카테고리 템플릿 객체
 var selVdr   = '';
 var qty      = 1;
 var chkRes   = {};
 var editId   = null;
-var curPhoto = null; // base64 사진
+var curPhoto = null;
 var ceSeq    = 200;
 var isAdmin  = false;
+
+/* 카테고리 점검 템플릿 (현장 필수 점검 항목) */
+var CAT_TEMPLATES = [
+  {id:'C01',icon:'⚡',name:'전동공구',color:'#1565C0',desc:'그라인더·드릴·원형톱 등',
+   checks:[
+     {t:'안전 가드 장착',d:'보호 가드 정상 체결 여부'},
+     {t:'전원코드/배터리',d:'코드 손상·피복 벗겨짐 또는 충전량 확인'},
+     {t:'날/비트 체결',d:'척·날·비트 정상 고정 여부'},
+     {t:'스위치 작동',d:'ON/OFF 및 잠금 장치 정상 작동'},
+     {t:'접지/절연 상태',d:'감전 방지 접지 또는 절연 상태 확인'}
+   ]},
+  {id:'C02',icon:'🏗️',name:'가설비계',color:'#E65100',desc:'강관비계·시스템비계 등',
+   checks:[
+     {t:'발판 고정 상태',d:'발판 고정핀 체결 및 변형 여부'},
+     {t:'연결핀 체결',d:'수직재·수평재 연결핀 정상 체결'},
+     {t:'안전 난간 설치',d:'상부 난간(90cm) 및 중간 난간 설치'},
+     {t:'벽 연결재',d:'벽 연결재 설치 간격 및 고정 상태'},
+     {t:'수직/수평 상태',d:'비계 전체 수평 및 수직도 확인'}
+   ]},
+  {id:'C03',icon:'🪜',name:'사다리',color:'#2E7D32',desc:'이동식·고정식 사다리',
+   checks:[
+     {t:'발판 변형/균열',d:'발판 뒤틀림·균열·손상 여부'},
+     {t:'미끄럼 방지 캡',d:'하단 고무캡 마모·탈락 여부'},
+     {t:'잠금장치 작동',d:'안전 걸쇠 정상 고정 여부'},
+     {t:'상단 고정',d:'사다리 상단 고정 또는 전도 방지 조치'}
+   ]},
+  {id:'C04',icon:'🚧',name:'이동식비계',color:'#6A1B9A',desc:'바퀴달린 이동식 작업대',
+   checks:[
+     {t:'바퀴 잠금장치',d:'캐스터 잠금 정상 작동 여부'},
+     {t:'연결핀 체결',d:'핀 정상 체결 및 이탈 여부'},
+     {t:'안전 난간',d:'상부 난간 정상 체결 여부'},
+     {t:'수평 상태',d:'수평계 또는 육안 확인'},
+     {t:'최대 하중',d:'적재 하중 표시 확인 및 준수'}
+   ]},
+  {id:'C05',icon:'🏠',name:'가설사무실',color:'#00695C',desc:'현장 컨테이너·임시 건물',
+   checks:[
+     {t:'소화기 비치',d:'소화기 위치·압력 정상 여부'},
+     {t:'전기 배선',d:'과부하·피복 손상·무단 인출 여부'},
+     {t:'출입문/비상구',d:'출입문 개폐 및 비상구 확보 여부'},
+     {t:'환기 상태',d:'환기구 막힘 및 환기 시설 상태'},
+     {t:'난방기 안전',d:'전기 히터·가스 난방기 안전 상태'}
+   ]},
+  {id:'C06',icon:'🚜',name:'건설장비',color:'#F57F17',desc:'굴착기·지게차·크레인 등',
+   checks:[
+     {t:'오일 레벨',d:'엔진오일·유압오일 레벨 확인'},
+     {t:'누유/누수',d:'오일·냉각수 누유·누수 여부'},
+     {t:'타이어/궤도',d:'타이어 공기압 또는 무한궤도 상태'},
+     {t:'안전장치',d:'경보음·안전레버·비상정지 작동 확인'},
+     {t:'등화장치',d:'전조등·후미등·경광등 작동 여부'}
+   ]}
+];
 
 /* ============================================================
    DEFAULT SEED DATA
@@ -590,11 +655,10 @@ async function initData() {
     var timeout = new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('연결 시간 초과')); }, 10000); });
     await Promise.race([loadVendors(), timeout]);
     await Promise.race([loadTools(), new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('연결 시간 초과')); }, 10000); })]);
-    initChips();
-    renderGrid();
+    renderCatGrid();
   } catch(e) {
     hideLoading();
-    document.getElementById('toolGrid').innerHTML =
+    document.getElementById('catGrid').innerHTML =
       '<div class="empty" style="grid-column:span 2">'
       +'<div class="ei">⚠️</div>'
       +'<div style="font-size:13px;color:#C62828;margin-bottom:8px;">서버 연결 실패</div>'
@@ -651,80 +715,43 @@ function switchTab(id) {
 }
 
 /* ============================================================
-   CHIP / GRID
+   CATEGORY GRID & SELECTION
 ============================================================ */
-function initChips() {
-  var wrap = document.getElementById('chipWrap');
-  wrap.innerHTML = '';
-  CATS.forEach(function(cat) {
-    var d = document.createElement('div');
-    d.className = 'chip' + (cat === curCat ? ' on' : '');
-    d.textContent = cat;
-    d.addEventListener('click', function() { setCat(cat); });
-    wrap.appendChild(d);
-  });
-}
-function setCat(cat) {
-  curCat = cat;
-  document.querySelectorAll('#chipWrap .chip').forEach(function(c, i){
-    c.classList.toggle('on', CATS[i] === cat);
-  });
-  renderGrid();
-}
-function renderGrid() {
-  var q = document.getElementById('srchInput').value.toLowerCase();
-  var f = TOOLS.filter(function(t){
-    return (curCat === '전체' || t.cat === curCat) &&
-           (!q || t.name.toLowerCase().indexOf(q) >= 0);
-  });
-  var g = document.getElementById('toolGrid');
-  if (!f.length) { g.innerHTML = '<div class="empty" style="grid-column:span 2"><div class="ei">🔍</div>검색 결과 없음</div>'; return; }
+function renderCatGrid() {
+  var g = document.getElementById('catGrid');
   g.innerHTML = '';
-
-  // 전체 선택 시: 카테고리별 헤더 + 그룹
-  if (curCat === '전체' && !q) {
-    var catOrder = ['전동공구','용접장비','안전장비','이동장비','인양장비','측정장비'];
-    var catEmoji = {'전동공구':'⚡','용접장비':'🔥','안전장비':'🦺','이동장비':'🚗','인양장비':'⛓️','측정장비':'📡'};
-    catOrder.forEach(function(cat) {
-      var tools = f.filter(function(t){ return t.cat === cat; });
-      if (!tools.length) return;
-      // 카테고리 헤더
-      var hdr = document.createElement('div');
-      hdr.style.cssText = 'grid-column:span 2;display:flex;align-items:center;gap:8px;margin:14px 0 4px;padding:8px 12px;background:rgba(21,101,192,0.08);border-radius:10px;border-left:4px solid #1565C0;';
-      hdr.innerHTML = '<span style="font-size:18px;">'+(catEmoji[cat]||'📦')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:#1565C0;">'+cat+'</span>'
-        +'<span style="font-size:11px;color:#888;margin-left:auto;">'+tools.length+'개</span>';
-      g.appendChild(hdr);
-      // 카테고리 내 공도구들
-      tools.forEach(function(tool) { g.appendChild(makeToolCard(tool)); });
-    });
-  } else {
-    f.forEach(function(tool) { g.appendChild(makeToolCard(tool)); });
-  }
+  CAT_TEMPLATES.forEach(function(cat) {
+    var d = document.createElement('div');
+    d.className = 'cat-card';
+    d.style.background = 'linear-gradient(135deg,' + cat.color + 'DD,' + cat.color + ')';
+    d.innerHTML =
+      '<div class="cat-ic">'+cat.icon+'</div>'
+      +'<div class="cat-nm">'+cat.name+'</div>'
+      +'<div class="cat-desc">'+cat.desc+'</div>'
+      +'<div class="cat-cnt">필수 '+cat.checks.length+'개 항목</div>';
+    d.addEventListener('click', function(){ selectCat(cat.id); });
+    g.appendChild(d);
+  });
 }
 
-function makeToolCard(tool) {
-  var d = document.createElement('div');
-  d.className = 'tc';
-  d.innerHTML = '<div class="ic">'+tool.icon+'</div><div class="nm">'+tool.name+'</div><div class="ct">'+tool.cat+'</div><div class="cnt">점검 '+tool.checks.length+'항목</div>';
-  d.addEventListener('click', function(){ selectTool(tool.id); });
-  return d;
-}
-
-/* ============================================================
-   TOOL SELECTION & INSPECTION
-============================================================ */
-function selectTool(id) {
-  curTool = TOOLS.find(function(t){ return t.id === id; });
-  if (!curTool) return;
+function selectCat(id) {
+  curCat = CAT_TEMPLATES.find(function(c){ return c.id === id; });
+  if (!curCat) return;
   selVdr = ''; qty = 1; chkRes = {};
   document.getElementById('qtyNum').textContent = '1';
-  document.getElementById('inspHeader').innerHTML =
-    '<div style="display:flex;align-items:center;gap:11px;">'
-    +'<span style="font-size:34px;">'+curTool.icon+'</span>'
-    +'<div><div class="iname">'+curTool.name+'</div>'
-    +'<div class="imeta"><span class="ibadge">'+curTool.cat+'</span>'
-    +'<span class="ibadge">점검항목 '+curTool.checks.length+'개</span></div></div></div>';
+  document.getElementById('equipName').value = '';
+  // 헤더
+  var hdr = document.getElementById('inspHeader');
+  hdr.style.background = 'linear-gradient(135deg,' + curCat.color + 'EE,' + curCat.color + ')';
+  hdr.innerHTML =
+    '<div style="display:flex;align-items:center;gap:13px;">'
+    +'<span style="font-size:38px;">'+curCat.icon+'</span>'
+    +'<div><div class="iname">'+curCat.name+'</div>'
+    +'<div class="imeta">'
+    +'<span class="ibadge">필수 점검 '+curCat.checks.length+'개</span>'
+    +'<span class="ibadge">'+curCat.desc+'</span>'
+    +'</div></div></div>';
+  // 업체 드롭다운
   var dd = document.getElementById('vdrSel');
   dd.innerHTML = '<option value="">-- 업체를 선택하세요 --</option>';
   VENDORS.forEach(function(v){
@@ -737,14 +764,14 @@ function selectTool(id) {
 }
 
 function renderChks() {
-  var total = curTool.checks.length, done = Object.keys(chkRes).length;
+  var total = curCat.checks.length, done = Object.keys(chkRes).length;
   var pct = total ? Math.round(done/total*100) : 0;
   document.getElementById('progLbl').textContent = done+' / '+total+' 완료';
   document.getElementById('progPct').textContent = pct+'%';
   document.getElementById('progFill').style.width = pct+'%';
   var list = document.getElementById('chkList');
   list.innerHTML = '';
-  curTool.checks.forEach(function(chk, idx) {
+  curCat.checks.forEach(function(chk, idx) {
     var d = document.createElement('div'); d.className = 'ci';
     d.innerHTML = '<div class="ci-no">'+(idx+1)+'</div>'
       +'<div class="ci-txt"><div class="ci-name">'+chk.t+'</div><div class="ci-desc">'+chk.d+'</div></div>'
@@ -765,17 +792,20 @@ function renderChks() {
 async function submitInsp() {
   var vdr = document.getElementById('vdrSel').value;
   if (!vdr) { showToast('⚠️ 업체를 선택해주세요'); return; }
-  var total = curTool.checks.length, done = Object.keys(chkRes).length;
+  var total = curCat.checks.length, done = Object.keys(chkRes).length;
   if (done < total) { showToast('⚠️ '+(total-done)+'개 항목을 더 점검해주세요'); return; }
   var badCnt = Object.values(chkRes).filter(function(v){ return v==='bad'; }).length;
   var result = badCnt > 0 ? '불량' : '양호';
-  var items = curTool.checks.map(function(c, i){ return {t: c.t, r: chkRes[i]}; });
+  var items = curCat.checks.map(function(c, i){ return {t: c.t, r: chkRes[i]}; });
+  // 장비/공도구 명칭 (선택사항 — 비어있으면 카테고리명)
+  var equipInput = document.getElementById('equipName').value.trim();
+  var toolName = equipInput || curCat.name;
 
   showLoading('저장 중...');
   var res = await db.from('inspections').insert({
-    tool_id: curTool.id,
-    tool_name: curTool.name,
-    category: curTool.cat,
+    tool_id: curCat.id,
+    tool_name: toolName,
+    category: curCat.name,
     vendor: vdr,
     quantity: qty,
     result: result,
@@ -784,50 +814,32 @@ async function submitInsp() {
     note: document.getElementById('noteInput').value || '',
     photo: curPhoto || null
   });
-  // photo 컬럼 없을 때 자동 재시도 (컬럼 미추가 대비)
   if (res.error && res.error.message && res.error.message.includes('photo')) {
     res = await db.from('inspections').insert({
-      tool_id: curTool.id, tool_name: curTool.name, category: curTool.cat,
+      tool_id: curCat.id, tool_name: toolName, category: curCat.name,
       vendor: vdr, quantity: qty, result: result, items: items,
       inspector: document.getElementById('inspector').value || '미입력',
       note: document.getElementById('noteInput').value || ''
     });
-    if (!res.error) showToast('⚠️ 사진 저장 제외됨 — Supabase에 photo 컬럼 추가 필요');
   }
   hideLoading();
-
   if (res.error) { showToast('⚠️ 저장 실패: ' + res.error.message); return; }
-  showToast('✅ 완료 | '+vdr+' · '+curTool.name+' · '+qty+'개 · '+result);
+  showToast('✅ 완료 | '+vdr+' · '+toolName+' · '+result);
 
-  // 스티커 오버레이 표시
-  showSticker(result, curTool, vdr, qty,
+  // 스티커
+  var stickerTool = {icon: curCat.icon, name: toolName, cat: curCat.name};
+  showSticker(result, stickerTool, vdr, qty,
     document.getElementById('inspector').value || '미입력');
 
-  // Google Sheets 자동 전송
+  // Google Sheets
   if (GSHEET_URL) {
     var dt = new Date();
-    var ds = dt.getFullYear()+'/'
-      +(dt.getMonth()+1).toString().padStart(2,'0')+'/'
-      +dt.getDate().toString().padStart(2,'0')+' '
-      +dt.getHours().toString().padStart(2,'0')+':'
-      +dt.getMinutes().toString().padStart(2,'0');
-    fetch(GSHEET_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: ds,
-        tool_name: curTool.name,
-        category: curTool.cat,
-        vendor: vdr,
-        quantity: qty,
-        result: result,
-        inspector: document.getElementById('inspector').value || '미입력',
-        note: document.getElementById('noteInput').value || ''
-      })
+    var ds = dt.getFullYear()+'/'+(dt.getMonth()+1).toString().padStart(2,'0')+'/'+dt.getDate().toString().padStart(2,'0')+' '+dt.getHours().toString().padStart(2,'0')+':'+dt.getMinutes().toString().padStart(2,'0');
+    fetch(GSHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({date:ds,tool_name:toolName,category:curCat.name,vendor:vdr,quantity:qty,result:result,
+        inspector:document.getElementById('inspector').value||'미입력',note:document.getElementById('noteInput').value||''})
     }).catch(function(){});
   }
-
   setTimeout(function(){ resetInsp(); switchTab('rec'); }, 1500);
 }
 
@@ -973,12 +985,13 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function resetInsp() {
-  curTool = null; selVdr = ''; qty = 1; chkRes = {}; curPhoto = null;
+  curCat = null; selVdr = ''; qty = 1; chkRes = {}; curPhoto = null;
   document.getElementById('photoPreview').style.display = 'none';
   document.getElementById('photoPreview').src = '';
   document.getElementById('btnPhotoDel').style.display = 'none';
   document.getElementById('btnPhoto').style.display = 'flex';
   document.getElementById('photoInput').value = '';
+  document.getElementById('equipName').value = '';
   document.getElementById('toolSelWrap').style.display = 'block';
   document.getElementById('inspWrap').style.display = 'none';
 }
@@ -1164,14 +1177,45 @@ async function loadAndRenderStat() {
   });
   document.getElementById('vChart').innerHTML = vc || '<div class="empty">데이터 없음</div>';
 
-  // 공도구 차트
+  // 점검자별 차트
+  var imap={};
+  data.forEach(function(r){
+    var k=r.inspector||'미입력';
+    if(!imap[k]) imap[k]={total:0,good:0};
+    imap[k].total++;
+    if(r.result==='양호') imap[k].good++;
+  });
+  var ic='';
+  Object.entries(imap).sort(function(a,b){return b[1].total-a[1].total;}).forEach(function(e){
+    var rt=Math.round(e[1].good/e[1].total*100);
+    var c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
+    ic+='<div class="bar-row">'
+      +'<div class="bar-lbl">'+e[0]+'</div>'
+      +'<div class="bar-track"><div class="bar-fill" style="width:'+rt+'%;background:'+c+';">'+e[1].total+'건</div></div>'
+      +'<div class="bar-val" style="color:'+c+';">'+e[1].total+'</div>'
+      +'</div>';
+  });
+  document.getElementById('inspChart').innerHTML = ic || '<div class="empty">데이터 없음</div>';
+
+  // 카테고리별 차트
   var tmap={};
-  data.forEach(function(r){ if(!tmap[r.tool_name]) tmap[r.tool_name]={qty:0}; tmap[r.tool_name].qty+=r.quantity; });
+  data.forEach(function(r){
+    var cat=r.category||r.tool_name;
+    if(!tmap[cat]) tmap[cat]={qty:0,good:0,total:0};
+    tmap[cat].qty+=r.quantity;
+    tmap[cat].total++;
+    if(r.result==='양호') tmap[cat].good++;
+  });
   var tarr=Object.entries(tmap).sort(function(a,b){return b[1].qty-a[1].qty;});
   var mq=tarr.length?tarr[0][1].qty:1, tc='';
   tarr.forEach(function(e){
-    var nm=e[0].replace('전동 ','').replace('이동식 ','').replace(' (하네스)','');
-    tc+='<div class="bar-row"><div class="bar-lbl">'+nm+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(e[1].qty/mq*100)+'%;background:#1565C0;">'+e[1].qty+'개</div></div><div class="bar-val">'+e[1].qty+'</div></div>';
+    var rt=e[1].total?Math.round(e[1].good/e[1].total*100):0;
+    var c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
+    tc+='<div class="bar-row">'
+      +'<div class="bar-lbl">'+e[0]+'</div>'
+      +'<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(e[1].qty/mq*100)+'%;background:'+c+';">'+e[1].qty+'개</div></div>'
+      +'<div class="bar-val">'+e[1].qty+'</div>'
+      +'</div>';
   });
   document.getElementById('tChart').innerHTML = tc || '<div class="empty">데이터 없음</div>';
 }
