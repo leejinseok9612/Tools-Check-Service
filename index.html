@@ -1413,7 +1413,7 @@ async function delTool(id,name) {
   await db.from('tools').delete().eq('id',id);
   hideLoading();
   TOOLS=TOOLS.filter(function(t){return t.id!==id;});
-  renderToolAdm(); renderGrid(); showToast('🗑️ "'+name+'" 삭제');
+  renderToolAdm(); showToast('🗑️ "'+name+'" 삭제');
 }
 
 function openToolMd(id) {
@@ -1491,7 +1491,7 @@ async function saveTool(){
   }
   hideLoading();
   if(res.error){showToast('⚠️ 저장 실패: '+res.error.message);return;}
-  closeMd(); renderToolAdm(); renderGrid();
+  closeMd(); renderToolAdm();
 }
 
 function renderCfg(){ document.getElementById('cfgStats').innerHTML='<div class="srow"><span>등록 업체</span><span class="sval">'+VENDORS.length+'개</span></div><div class="srow"><span>등록 공도구</span><span class="sval">'+TOOLS.length+'종</span></div>'; }
@@ -1529,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btnAddCe').addEventListener('click', addCeRow);
   document.getElementById('btnMdCan').addEventListener('click', closeMd);
   document.getElementById('btnMdSave').addEventListener('click', saveTool);
-  document.getElementById('srchInput').addEventListener('input', renderGrid);
+  // srchInput 은 카테고리 방식으로 전환 후 제거됨
   document.getElementById('qMinus').addEventListener('click', function(){ qty=Math.max(1,qty-1); document.getElementById('qtyNum').textContent=qty; });
   document.getElementById('qPlus').addEventListener('click',  function(){ qty++; document.getElementById('qtyNum').textContent=qty; });
   document.getElementById('vdrSel').addEventListener('change', function(){ selVdr=this.value; });
