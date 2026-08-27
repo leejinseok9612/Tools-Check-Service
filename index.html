@@ -55,7 +55,9 @@ body {
 .tc:active { background:#E3F2FD; border-color:#1565C0; }
 .tc .ic{font-size:28px;margin-bottom:7px;} .tc .nm{font-size:13px;font-weight:700;line-height:1.3;} .tc .ct{font-size:10px;color:#888;margin-top:2px;} .tc .cnt{font-size:11px;color:#1565C0;margin-top:4px;font-weight:700;}
 /* 카테고리 카드 그리드 */
-#catGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+#catGrid{margin-top:8px;}
+.cat-section-hd{font-size:13px;font-weight:800;color:#444;margin-bottom:8px;padding:6px 2px;border-left:4px solid #1565C0;padding-left:10px;letter-spacing:.3px;}
+.cat-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
 .cat-card{border-radius:14px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;color:#fff;min-height:120px;justify-content:center;gap:6px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);transition:transform .1s;}
 .cat-card:active{transform:scale(0.97);}
 .cat-card .cat-ic{font-size:34px;line-height:1;}
@@ -543,54 +545,153 @@ var curPhoto = null;
 var ceSeq    = 200;
 var isAdmin  = false;
 
-/* 카테고리 점검 템플릿 (현장 필수 점검 항목) */
+/* 카테고리 점검 템플릿 */
 var CAT_TEMPLATES = [
-  {id:'C01',icon:'⚡',name:'전동공구',color:'#1565C0',desc:'그라인더·드릴·원형톱 등',
+  /* ── 정기점검 ── */
+  {id:'R01',type:'regular',icon:'📋',name:'TBM',color:'#37474F',desc:'작업 전 안전 미팅',
    checks:[
-     {t:'안전 가드 장착',d:'보호 가드 정상 체결 여부'},
-     {t:'전원코드/배터리',d:'코드 손상·피복 벗겨짐 또는 충전량 확인'},
-     {t:'날/비트 체결',d:'척·날·비트 정상 고정 여부'},
-     {t:'스위치 작동',d:'ON/OFF 및 잠금 장치 정상 작동'},
-     {t:'접지/절연 상태',d:'감전 방지 접지 또는 절연 상태 확인'}
+     {t:'TBM 실시',d:'작업 시작 전 TBM 진행 여부'},
+     {t:'위험작업 공유',d:'당일 위험 작업 내용 공유'},
+     {t:'위험성평가 전파',d:'위험성평가 결과 작업자 전파'},
+     {t:'건강상태 확인',d:'작업자 건강·음주 상태 확인'},
+     {t:'보호구 확인',d:'작업별 보호구 착용 지시'}
    ]},
-  {id:'C02',icon:'🏗️',name:'가설비계',color:'#E65100',desc:'강관비계·시스템비계 등',
+  {id:'R02',type:'regular',icon:'🦺',name:'개인보호구',color:'#1565C0',desc:'안전모·안전화·안전대 등',
    checks:[
-     {t:'발판 고정 상태',d:'발판 고정핀 체결 및 변형 여부'},
-     {t:'연결핀 체결',d:'수직재·수평재 연결핀 정상 체결'},
-     {t:'안전 난간 설치',d:'상부 난간(90cm) 및 중간 난간 설치'},
-     {t:'벽 연결재',d:'벽 연결재 설치 간격 및 고정 상태'},
-     {t:'수직/수평 상태',d:'비계 전체 수평 및 수직도 확인'}
+     {t:'안전모 착용',d:'안전모 올바른 착용 및 턱끈 체결'},
+     {t:'안전화 착용',d:'안전화 착용 및 상태 양호'},
+     {t:'안전대 착용',d:'고소작업 시 안전대 착용 및 체결'},
+     {t:'보안경 착용',d:'필요 작업 시 보안경 착용'},
+     {t:'작업별 보호구 착용',d:'작업 종류에 맞는 보호구 착용'}
    ]},
-  {id:'C03',icon:'🪜',name:'사다리',color:'#2E7D32',desc:'이동식·고정식 사다리',
+  {id:'R03',type:'regular',icon:'🧹',name:'정리정돈',color:'#00695C',desc:'통로·자재·폐기물 관리',
    checks:[
-     {t:'발판 변형/균열',d:'발판 뒤틀림·균열·손상 여부'},
-     {t:'미끄럼 방지 캡',d:'하단 고무캡 마모·탈락 여부'},
-     {t:'잠금장치 작동',d:'안전 걸쇠 정상 고정 여부'},
-     {t:'상단 고정',d:'사다리 상단 고정 또는 전도 방지 조치'}
+     {t:'통로 확보',d:'비상·작업 통로 장애물 없음'},
+     {t:'자재 적치 양호',d:'자재 지정 장소 적치 및 전도 방지'},
+     {t:'전도 위험 없음',d:'자재·장비 전도 위험 요인 없음'},
+     {t:'폐기물 정리',d:'폐기물 지정 장소 분리 수거'},
+     {t:'청결 유지',d:'작업장 청결 상태 유지'}
    ]},
-  {id:'C04',icon:'🚧',name:'이동식비계',color:'#6A1B9A',desc:'바퀴달린 이동식 작업대',
-   checks:[
-     {t:'바퀴 잠금장치',d:'캐스터 잠금 정상 작동 여부'},
-     {t:'연결핀 체결',d:'핀 정상 체결 및 이탈 여부'},
-     {t:'안전 난간',d:'상부 난간 정상 체결 여부'},
-     {t:'수평 상태',d:'수평계 또는 육안 확인'},
-     {t:'최대 하중',d:'적재 하중 표시 확인 및 준수'}
-   ]},
-  {id:'C05',icon:'🏠',name:'가설사무실',color:'#00695C',desc:'현장 컨테이너·임시 건물',
+  {id:'R04',type:'regular',icon:'🏠',name:'가설사무실',color:'#4527A0',desc:'현장 컨테이너·임시 건물',
    checks:[
      {t:'소화기 비치',d:'소화기 위치·압력 정상 여부'},
-     {t:'전기 배선',d:'과부하·피복 손상·무단 인출 여부'},
-     {t:'출입문/비상구',d:'출입문 개폐 및 비상구 확보 여부'},
-     {t:'환기 상태',d:'환기구 막힘 및 환기 시설 상태'},
-     {t:'난방기 안전',d:'전기 히터·가스 난방기 안전 상태'}
+     {t:'분전반 관리',d:'분전반 잠금·표지 및 누전차단기 상태'},
+     {t:'비상구 확보',d:'비상구·출입문 개폐 정상'},
+     {t:'안전게시물 게시',d:'법정 안전게시물 부착 여부'},
+     {t:'정리정돈',d:'사무실 내부 정리정돈 상태'}
    ]},
-  {id:'C06',icon:'🚜',name:'건설장비',color:'#F57F17',desc:'굴착기·지게차·크레인 등',
+  {id:'R05',type:'regular',icon:'⚠️',name:'개구부',color:'#E65100',desc:'바닥·벽 개구부 안전조치',
    checks:[
-     {t:'오일 레벨',d:'엔진오일·유압오일 레벨 확인'},
-     {t:'누유/누수',d:'오일·냉각수 누유·누수 여부'},
-     {t:'타이어/궤도',d:'타이어 공기압 또는 무한궤도 상태'},
-     {t:'안전장치',d:'경보음·안전레버·비상정지 작동 확인'},
-     {t:'등화장치',d:'전조등·후미등·경광등 작동 여부'}
+     {t:'덮개 설치',d:'개구부 덮개 설치 여부'},
+     {t:'고정상태 양호',d:'덮개 고정 볼트·핀 체결 상태'},
+     {t:'위험표지 설치',d:'개구부 주변 위험 표지 부착'},
+     {t:'난간 설치',d:'개구부 주변 안전 난간 설치'},
+     {t:'임의해체 없음',d:'덮개·난간 임의 해체 없음'}
+   ]},
+  {id:'R06',type:'regular',icon:'🪵',name:'작업발판',color:'#5D4037',desc:'비계 발판·작업대 상태',
+   checks:[
+     {t:'발판 고정',d:'발판 고정핀·클램프 정상 체결'},
+     {t:'발판 폭 확보',d:'작업 발판 폭 40cm 이상 확보'},
+     {t:'파손 없음',d:'발판 균열·변형·파손 없음'},
+     {t:'과적 없음',d:'허용 하중 초과 적재 없음'},
+     {t:'추락방지 조치',d:'끝단 안전 난간·발끝막이판 설치'}
+   ]},
+  {id:'R07',type:'regular',icon:'🪜',name:'사다리',color:'#2E7D32',desc:'이동식·고정식 사다리',
+   checks:[
+     {t:'파손 없음',d:'발판·측면 균열·변형 없음'},
+     {t:'미끄럼방지',d:'발판·하단 미끄럼 방지 장치 양호'},
+     {t:'최상단 작업 금지',d:'최상단 발판 작업 금지 준수'},
+     {t:'2인1조 준수',d:'사다리 작업 시 보조자 배치'},
+     {t:'점검태그 부착',d:'점검 완료 태그 부착 여부'}
+   ]},
+  {id:'R08',type:'regular',icon:'🚧',name:'이동식비계',color:'#6A1B9A',desc:'바퀴 달린 이동식 작업대',
+   checks:[
+     {t:'작업발판 설치',d:'상부 작업발판 고정 상태'},
+     {t:'난간 설치',d:'상부·중간 안전 난간 체결'},
+     {t:'아웃트리거 설치',d:'아웃트리거 전개·고정 여부'},
+     {t:'브레이크 고정',d:'이동 후 바퀴 잠금 확인'},
+     {t:'점검태그 부착',d:'점검 완료 태그 부착 여부'}
+   ]},
+  {id:'R09',type:'regular',icon:'🏗️',name:'시스템비계',color:'#0277BD',desc:'강관·시스템 조립 비계',
+   checks:[
+     {t:'작업발판 상태',d:'발판 고정 및 파손 여부'},
+     {t:'난간 상태',d:'상부·중간 난간 체결 상태'},
+     {t:'벽연결재 설치',d:'벽 연결재 설치 간격·고정'},
+     {t:'적재하중 표시',d:'허용 하중 표시 부착 여부'},
+     {t:'비계태그 부착',d:'비계 점검 태그 부착 여부'}
+   ]},
+  {id:'R10',type:'regular',icon:'⚡',name:'가설전기',color:'#F57F17',desc:'임시 전기설비·배선',
+   checks:[
+     {t:'분전함 잠금',d:'분전함 잠금 및 표지 부착'},
+     {t:'누전차단기 정상',d:'누전차단기 작동 정상 여부'},
+     {t:'접지 상태',d:'접지선 연결 상태 확인'},
+     {t:'전선 손상 없음',d:'전선 피복 손상·절단 없음'},
+     {t:'케이블 정리',d:'케이블 통로 정리 및 보호관 설치'}
+   ]},
+  /* ── 테마점검 ── */
+  {id:'T01',type:'theme',icon:'🔧',name:'전동공구',color:'#1565C0',desc:'그라인더·드릴·원형톱 등',
+   checks:[
+     {t:'외관 양호',d:'외관 파손·변형 없음'},
+     {t:'전선 손상 없음',d:'전원코드 피복 손상·절단 없음'},
+     {t:'접지 상태',d:'접지선 연결 및 절연 상태'},
+     {t:'방호커버 설치',d:'회전체·날 방호커버 정상 체결'},
+     {t:'점검필증 부착',d:'월별 점검 필증 부착 여부'}
+   ]},
+  {id:'T02',type:'theme',icon:'🔥',name:'화기작업',color:'#B71C1C',desc:'용접·절단·가스 작업',
+   checks:[
+     {t:'작업허가서',d:'화기작업 허가서 발급·게시'},
+     {t:'화재감시인 배치',d:'화재감시인 지정 및 위치 배치'},
+     {t:'소화기 비치',d:'작업 반경 5m 내 소화기 비치'},
+     {t:'가연물 제거',d:'주변 가연물 제거 또는 방호'},
+     {t:'작업 후 잔불 확인',d:'작업 종료 후 잔불·발열부 확인'}
+   ]},
+  {id:'T03',type:'theme',icon:'🏋️',name:'양중작업',color:'#37474F',desc:'크레인·호이스트 인양',
+   checks:[
+     {t:'작업계획 확인',d:'양중작업 계획서 작성·공유'},
+     {t:'줄걸이 양호',d:'와이어·슬링 손상·꼬임 없음'},
+     {t:'신호수 배치',d:'유자격 신호수 지정 배치'},
+     {t:'출입통제',d:'인양 반경 출입 통제 조치'},
+     {t:'양중물 결속',d:'양중물 이탈 방지 결속 확인'}
+   ]},
+  {id:'T04',type:'theme',icon:'🚜',name:'굴착기',color:'#E65100',desc:'굴착·파쇄·정지 작업',
+   checks:[
+     {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
+     {t:'버켓핀 체결',d:'버켓핀·링크 체결 상태'},
+     {t:'후방카메라 정상',d:'후방카메라 작동 정상'},
+     {t:'유도자 배치',d:'장비 이동 시 유도자 배치'},
+     {t:'반경 통제',d:'작업 반경 내 출입 통제'}
+   ]},
+  {id:'T05',type:'theme',icon:'🚛',name:'지게차',color:'#1B5E20',desc:'자재 운반·적재 작업',
+   checks:[
+     {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
+     {t:'후진경보 정상',d:'후진 경보음 정상 작동'},
+     {t:'안전벨트 착용',d:'운전자 안전벨트 착용'},
+     {t:'자격 확인',d:'지게차 운전 자격증 보유'},
+     {t:'유도자 배치',d:'후진·선회 시 유도자 배치'}
+   ]},
+  {id:'T06',type:'theme',icon:'🏔️',name:'고소작업대',color:'#4527A0',desc:'차량형·시저·붐형 등',
+   checks:[
+     {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
+     {t:'과상승방지장치',d:'과상승 방지장치 작동 확인'},
+     {t:'안전대 체결',d:'탑승자 안전대 난간 체결'},
+     {t:'출입통제',d:'작업 반경 출입 통제 조치'},
+     {t:'자격자 운전',d:'고소작업대 운전 자격자 운전'}
+   ]},
+  {id:'T07',type:'theme',icon:'🚗',name:'차량계장비',color:'#0277BD',desc:'덤프·믹서·펌프카 등',
+   checks:[
+     {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
+     {t:'경광등 정상',d:'경광등·전조등·후미등 작동'},
+     {t:'후방감시장치 정상',d:'후방카메라·감지기 정상 작동'},
+     {t:'신호수 배치',d:'후진·선회 시 신호수 배치'},
+     {t:'작업구역 통제',d:'장비 작업구역 출입 통제'}
+   ]},
+  {id:'T08',type:'theme',icon:'☣️',name:'화학물질/MSDS',color:'#880E4F',desc:'유해화학물질 취급',
+   checks:[
+     {t:'MSDS 비치',d:'취급 물질 MSDS 작업장 비치'},
+     {t:'경고표지 부착',d:'용기·저장소 경고표지 부착'},
+     {t:'소분용기 표기',d:'소분 용기 물질명·위험성 표기'},
+     {t:'보호구 착용',d:'화학물질 전용 보호구 착용'},
+     {t:'보관상태 양호',d:'지정 장소 보관 및 누출 없음'}
    ]}
 ];
 
@@ -720,18 +821,39 @@ function switchTab(id) {
 function renderCatGrid() {
   var g = document.getElementById('catGrid');
   g.innerHTML = '';
-  CAT_TEMPLATES.forEach(function(cat) {
-    var d = document.createElement('div');
-    d.className = 'cat-card';
-    d.style.background = 'linear-gradient(135deg,' + cat.color + 'DD,' + cat.color + ')';
-    d.innerHTML =
-      '<div class="cat-ic">'+cat.icon+'</div>'
-      +'<div class="cat-nm">'+cat.name+'</div>'
-      +'<div class="cat-desc">'+cat.desc+'</div>'
-      +'<div class="cat-cnt">필수 '+cat.checks.length+'개 항목</div>';
-    d.addEventListener('click', function(){ selectCat(cat.id); });
-    g.appendChild(d);
-  });
+
+  var regular = CAT_TEMPLATES.filter(function(c){ return c.type === 'regular'; });
+  var theme   = CAT_TEMPLATES.filter(function(c){ return c.type === 'theme'; });
+
+  function makeSection(title, cats) {
+    var sec = document.createElement('div');
+    var hd = document.createElement('div');
+    hd.className = 'cat-section-hd';
+    hd.textContent = title;
+    sec.appendChild(hd);
+
+    var grid = document.createElement('div');
+    grid.className = 'cat-sub-grid';
+
+    cats.forEach(function(cat) {
+      var d = document.createElement('div');
+      d.className = 'cat-card';
+      d.style.background = 'linear-gradient(135deg,' + cat.color + 'DD,' + cat.color + ')';
+      d.innerHTML =
+        '<div class="cat-ic">'+cat.icon+'</div>'
+        +'<div class="cat-nm">'+cat.name+'</div>'
+        +'<div class="cat-desc">'+cat.desc+'</div>'
+        +'<div class="cat-cnt">필수 '+cat.checks.length+'개 항목</div>';
+      d.addEventListener('click', function(){ selectCat(cat.id); });
+      grid.appendChild(d);
+    });
+
+    sec.appendChild(grid);
+    g.appendChild(sec);
+  }
+
+  makeSection('📋 정기점검 (' + regular.length + ')', regular);
+  makeSection('🎯 테마점검 (' + theme.length + ')', theme);
 }
 
 function selectCat(id) {
