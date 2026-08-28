@@ -56,8 +56,30 @@ body {
 .tc .ic{font-size:28px;margin-bottom:7px;} .tc .nm{font-size:13px;font-weight:700;line-height:1.3;} .tc .ct{font-size:10px;color:#888;margin-top:2px;} .tc .cnt{font-size:11px;color:#1565C0;margin-top:4px;font-weight:700;}
 /* 카테고리 카드 그리드 */
 #catGrid{margin-top:8px;}
-.cat-section-hd{font-size:13px;font-weight:800;color:#444;margin-bottom:8px;padding:6px 2px;border-left:4px solid #1565C0;padding-left:10px;letter-spacing:.3px;}
-.cat-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.cat-section-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#fff;border-radius:14px;padding:16px 18px;
+  margin-bottom:8px;cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  border:1.5px solid #E8EAF6;
+  transition:background .15s;
+  user-select:none;-webkit-user-select:none;
+}
+.cat-section-hd:active{background:#E8EAF6;}
+.cat-section-hd .sh-left{display:flex;align-items:center;gap:10px;}
+.cat-section-hd .sh-badge{background:#E8EAF6;color:#1565C0;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.cat-section-hd .sh-title{font-size:15px;font-weight:800;color:#1A1A1A;}
+.cat-section-hd .sh-arrow{font-size:14px;color:#aaa;transition:transform .25s;}
+.cat-section-hd.open .sh-arrow{transform:rotate(180deg);}
+.cat-sub-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:14px;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height .3s ease, opacity .25s;
+  opacity:0;
+}
+.cat-sub-grid.open{max-height:1200px;opacity:1;}
 .cat-card{border-radius:14px;padding:18px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;color:#fff;min-height:120px;justify-content:center;gap:6px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);transition:transform .1s;}
 .cat-card:active{transform:scale(0.97);}
 .cat-card .cat-ic{font-size:34px;line-height:1;}
@@ -825,13 +847,21 @@ function renderCatGrid() {
   var regular = CAT_TEMPLATES.filter(function(c){ return c.type === 'regular'; });
   var theme   = CAT_TEMPLATES.filter(function(c){ return c.type === 'theme'; });
 
-  function makeSection(title, cats) {
+  function makeSection(emoji, label, cats) {
     var sec = document.createElement('div');
+
+    // 헤더
     var hd = document.createElement('div');
     hd.className = 'cat-section-hd';
-    hd.textContent = title;
-    sec.appendChild(hd);
+    hd.innerHTML =
+      '<div class="sh-left">'
+      +'<span style="font-size:20px;">'+emoji+'</span>'
+      +'<span class="sh-title">'+label+'</span>'
+      +'<span class="sh-badge">'+cats.length+'개</span>'
+      +'</div>'
+      +'<span class="sh-arrow">▾</span>';
 
+    // 카드 그리드 (기본 닫힘)
     var grid = document.createElement('div');
     grid.className = 'cat-sub-grid';
 
@@ -848,12 +878,19 @@ function renderCatGrid() {
       grid.appendChild(d);
     });
 
+    hd.addEventListener('click', function() {
+      var isOpen = hd.classList.contains('open');
+      hd.classList.toggle('open', !isOpen);
+      grid.classList.toggle('open', !isOpen);
+    });
+
+    sec.appendChild(hd);
     sec.appendChild(grid);
     g.appendChild(sec);
   }
 
-  makeSection('📋 정기점검 (' + regular.length + ')', regular);
-  makeSection('🎯 테마점검 (' + theme.length + ')', theme);
+  makeSection('📋', '정기점검', regular);
+  makeSection('🎯', '테마점검', theme);
 }
 
 function selectCat(id) {
