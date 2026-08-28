@@ -177,6 +177,12 @@ body.admin-on .admin-only{display:flex;}
 .pt th{background:#F5F5F5;padding:8px 9px;text-align:left;font-size:11px;color:#888;border-bottom:1.5px solid #E0E0E0;white-space:nowrap;}
 .pt td{padding:8px 9px;border-bottom:1px solid #F5F5F5;}
 .pt tr:last-child td{border-bottom:none;}
+.pt-vhd td{
+  background:#E8EAF6;padding:10px 10px;font-size:12px;font-weight:800;
+  color:#1565C0;border-bottom:1.5px solid #C5CAE9;border-top:6px solid #fff;
+}
+.pt-vhd:first-child td{border-top:none;}
+.pt-sub td{padding:7px 10px 7px 18px;}
 #loginOv{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
 #loginOv.on{display:flex;}
 .lbox{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:340px;}
@@ -1368,23 +1374,45 @@ async function loadAndRenderStat() {
   else hdr.style.background = 'linear-gradient(135deg,#B71C1C,#7F0000)';
 
   // Pivot
-  var pmap={};
+  // 업체 → 공도구별 집계
+  var vmap={};
   data.forEach(function(r){
-    var k=r.vendor+'|'+r.tool_name;
-    if(!pmap[k]) pmap[k]={vendor:r.vendor,tool:r.tool_name,qty:0,good:0,bad:0};
-    pmap[k].qty+=r.quantity;
-    if(r.result==='양호') pmap[k].good++; else pmap[k].bad++;
+    var v=r.vendor, t=r.tool_name;
+    if(!vmap[v]) vmap[v]={tools:{},total:0,good:0};
+    if(!vmap[v].tools[t]) vmap[v].tools[t]={qty:0,good:0,bad:0};
+    vmap[v].tools[t].qty+=r.quantity;
+    vmap[v].total++;
+    if(r.result==='양호'){ vmap[v].tools[t].good++; vmap[v].good++; }
+    else { vmap[v].tools[t].bad++; }
   });
-  var prows=Object.values(pmap).sort(function(a,b){return a.vendor.localeCompare(b.vendor);});
-  var ptbl='<thead><tr><th>업체명</th><th>공도구</th><th>수량</th><th>양호</th><th>불량</th><th>양호율</th></tr></thead><tbody>';
-  prows.forEach(function(p){
-    var t=p.good+p.bad, rt=Math.round(p.good/t*100);
-    var c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
-    ptbl+='<tr><td style="font-weight:600;font-size:12px;">'+p.vendor+'</td><td style="font-size:12px;">'+p.tool+'</td>'
-      +'<td style="text-align:center;font-weight:800;color:#6A1B9A;">'+p.qty+'</td>'
-      +'<td style="text-align:center;color:#2E7D32;font-weight:700;">'+p.good+'</td>'
-      +'<td style="text-align:center;color:#C62828;font-weight:700;">'+p.bad+'</td>'
-      +'<td style="text-align:center;font-weight:800;color:'+c+';">'+rt+'%</td></tr>';
+
+  var ptbl='<thead><tr>'
+    +'<th>공도구</th><th style="text-align:center;">수량</th>'
+    +'<th style="text-align:center;">양호</th><th style="text-align:center;">불량</th>'
+    +'<th style="text-align:center;">양호율</th>'
+    +'</tr></thead><tbody>';
+
+  Object.keys(vmap).sort().forEach(function(v){
+    var vi=vmap[v];
+    var vRate=vi.total>0?Math.round(vi.good/vi.total*100):0;
+    var vc=vRate===100?'#2E7D32':vRate>=70?'#1565C0':'#C62828';
+    // 업체 헤더 행
+    ptbl+='<tr class="pt-vhd"><td colspan="5">'
+      +'🏢 '+v
+      +'<span style="font-weight:500;color:#5C6BC0;margin-left:10px;font-size:11px;">총 '+vi.total+'건</span>'
+      +'<span style="font-weight:800;color:'+vc+';margin-left:8px;font-size:12px;">양호율 '+vRate+'%</span>'
+      +'</td></tr>';
+    // 공도구 하위 행
+    Object.keys(vi.tools).sort().forEach(function(t){
+      var p=vi.tools[t], pt=p.good+p.bad, rt=pt>0?Math.round(p.good/pt*100):0;
+      var c=rt===100?'#2E7D32':rt>=70?'#E65100':'#C62828';
+      ptbl+='<tr class="pt-sub">'
+        +'<td style="font-size:12px;">'+t+'</td>'
+        +'<td style="text-align:center;font-weight:800;color:#6A1B9A;">'+p.qty+'</td>'
+        +'<td style="text-align:center;color:#2E7D32;font-weight:700;">'+p.good+'</td>'
+        +'<td style="text-align:center;color:#C62828;font-weight:700;">'+p.bad+'</td>'
+        +'<td style="text-align:center;font-weight:800;color:'+c+';">'+rt+'%</td></tr>';
+    });
   });
   document.getElementById('pivotTbl').innerHTML=ptbl+'</tbody>';
 
