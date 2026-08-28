@@ -147,6 +147,24 @@ input,select,textarea{font-family:inherit;font-size:16px;}
 /* 관리자 전용 요소: 기본 숨김, 관리자 모드에서만 표시 */
 .admin-only{display:none;}
 body.admin-on .admin-only{display:flex;}
+/* ── 통계 헤더 ── */
+#statHeader{
+  background:linear-gradient(135deg,#1565C0,#0D47A1);
+  border-radius:16px; padding:18px 16px 14px; margin-bottom:12px;
+  color:#fff; box-shadow:0 3px 10px rgba(21,101,192,.35);
+}
+#statHeader .sh-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+#statHeader .sh-title{font-size:16px;font-weight:800;letter-spacing:.3px;}
+#statHeader .sh-date{font-size:11px;opacity:.7;margin-top:3px;}
+#statHeader .sh-rate-wrap{text-align:right;}
+#statHeader .sh-rate{font-size:38px;font-weight:900;line-height:1;}
+#statHeader .sh-rate span{font-size:18px;font-weight:700;}
+#statHeader .sh-rate-lbl{font-size:10px;opacity:.7;margin-top:1px;}
+#statHeader .sh-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+#statHeader .sh-chip{background:rgba(255,255,255,0.13);border-radius:10px;padding:9px 6px;text-align:center;}
+#statHeader .sh-chip .sc-n{font-size:18px;font-weight:800;}
+#statHeader .sh-chip .sc-l{font-size:10px;opacity:.75;margin-top:2px;}
+
 .kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
 .ki{background:#fff;border-radius:11px;padding:11px 7px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07);}
 .ki .kn{font-size:20px;font-weight:800;} .ki .kl{font-size:10px;color:#888;margin-top:2px;}
@@ -391,11 +409,24 @@ body.admin-on .admin-only{display:flex;}
 
 <!-- PAGE: STATS -->
 <div class="page" id="page-stat">
-  <div class="kgrid">
-    <div class="ki"><div class="kn" id="kTot" style="color:#1565C0;">0</div><div class="kl">총 점검건</div></div>
-    <div class="ki"><div class="kn" id="kQty" style="color:#6A1B9A;">0</div><div class="kl">총 수량</div></div>
-    <div class="ki"><div class="kn" id="kGood" style="color:#2E7D32;">0</div><div class="kl">양호</div></div>
-    <div class="ki"><div class="kn" id="kBad"  style="color:#C62828;">0</div><div class="kl">불량</div></div>
+  <!-- 통계 헤더 -->
+  <div id="statHeader">
+    <div class="sh-top">
+      <div>
+        <div class="sh-title">📊 현장 점검 현황</div>
+        <div class="sh-date" id="statDate">--</div>
+      </div>
+      <div class="sh-rate-wrap">
+        <div class="sh-rate"><span id="kRate">--</span><span>%</span></div>
+        <div class="sh-rate-lbl">전체 양호율</div>
+      </div>
+    </div>
+    <div class="sh-chips">
+      <div class="sh-chip"><div class="sc-n" id="kTot">-</div><div class="sc-l">총 점검</div></div>
+      <div class="sh-chip"><div class="sc-n" id="kQty">-</div><div class="sc-l">총 수량</div></div>
+      <div class="sh-chip"><div class="sc-n" id="kGood" style="color:#A5D6A7;">-</div><div class="sc-l">양호</div></div>
+      <div class="sh-chip"><div class="sc-n" id="kBad"  style="color:#EF9A9A;">-</div><div class="sc-l">불량</div></div>
+    </div>
   </div>
   <div class="card">
     <div class="card-hd">📊 업체 × 공도구 피벗</div>
@@ -1313,6 +1344,20 @@ async function loadAndRenderStat() {
   document.getElementById('kQty').textContent  = tq;
   document.getElementById('kGood').textContent = good;
   document.getElementById('kBad').textContent  = bad;
+
+  // 헤더 날짜·양호율
+  var now = new Date();
+  var ds = now.getFullYear()+'.'
+    +String(now.getMonth()+1).padStart(2,'0')+'.'
+    +String(now.getDate()).padStart(2,'0')+' 기준';
+  document.getElementById('statDate').textContent = ds;
+  var rate = tot > 0 ? Math.round(good/tot*100) : 0;
+  document.getElementById('kRate').textContent = rate;
+  // 양호율에 따라 헤더 색상 변경
+  var hdr = document.getElementById('statHeader');
+  if (rate === 100) hdr.style.background = 'linear-gradient(135deg,#2E7D32,#1B5E20)';
+  else if (rate >= 70) hdr.style.background = 'linear-gradient(135deg,#1565C0,#0D47A1)';
+  else hdr.style.background = 'linear-gradient(135deg,#B71C1C,#7F0000)';
 
   // Pivot
   var pmap={};
