@@ -268,14 +268,23 @@ body.admin-on .admin-only{display:flex;}
 .btn-sticker-print{flex:1;padding:14px;background:#1565C0;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
 .btn-sticker-close{padding:14px 18px;background:#F5F5F5;color:#888;border:none;border-radius:12px;font-size:14px;cursor:pointer;font-family:inherit;}
 @media print{
-  body > *:not(#stickerOv):not(#qrPrintOv){ display:none!important; }
-  #stickerOv{ position:static!important;display:block!important;background:none!important;padding:0!important; }
-  #stickerBox{ box-shadow:none!important;max-width:100%!important; }
-  .sticker-acts,h3{ display:none!important; }
-  #qrPrintOv{ position:static!important; display:flex!important; }
-  .qpo-acts,.btn-qpo-close,.btn-qpo-print{ display:none!important; }
-  #qrPrintOv img{ width:280px;height:280px; }
-  #qrPrintOv .qpo-nm{ font-size:28px; }
+  body > *{ display:none!important; }
+
+  /* QR 인쇄 모드 */
+  body.print-qr #qrPrintOv{
+    display:flex!important; position:static!important;
+  }
+  body.print-qr #qrPrintOv img{ width:280px;height:280px; }
+  body.print-qr #qrPrintOv .qpo-nm{ font-size:28px; }
+  body.print-qr .qpo-acts{ display:none!important; }
+
+  /* 스티커 인쇄 모드 */
+  body.print-sticker #stickerOv{
+    display:block!important; position:static!important;
+    background:none!important; padding:0!important;
+  }
+  body.print-sticker #stickerBox{ box-shadow:none!important; max-width:100%!important; }
+  body.print-sticker .sticker-acts{ display:none!important; }
 }
 /* 로딩 오버레이 */
 #loadingOv{position:fixed;inset:0;background:rgba(255,255,255,0.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
@@ -1751,7 +1760,11 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // QR 인쇄 오버레이
-  document.getElementById('btnQpoPrint').addEventListener('click', function(){ window.print(); });
+  document.getElementById('btnQpoPrint').addEventListener('click', function(){
+    document.body.classList.add('print-qr');
+    window.print();
+    setTimeout(function(){ document.body.classList.remove('print-qr'); }, 500);
+  });
   document.getElementById('btnQpoClose').addEventListener('click', function(){
     document.getElementById('qrPrintOv').classList.remove('on');
   });
