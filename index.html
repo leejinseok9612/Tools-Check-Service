@@ -401,6 +401,9 @@ body.admin-on .admin-only{display:flex;}
   <div class="frow">
     <select class="fsel" id="fVdr"><option value="">전체 업체</option></select>
     <select class="fsel" id="fTool"><option value="">전체 공도구</option></select>
+  </div>
+  <div class="frow">
+    <select class="fsel" id="fInsp"><option value="">전체 점검자</option></select>
     <select class="fsel" id="fRes"><option value="">전체</option><option value="양호">✅ 양호</option><option value="불량">❌ 불량</option></select>
   </div>
   <div class="sgrid" id="sumGrid"></div>
@@ -1202,6 +1205,7 @@ async function loadAndRenderRec() {
   showLoading('기록 불러오는 중...');
   var fv = document.getElementById('fVdr').value;
   var ft = document.getElementById('fTool').value;
+  var fi = document.getElementById('fInsp').value;
   var fr = document.getElementById('fRes').value;
 
   var res;
@@ -1209,6 +1213,7 @@ async function loadAndRenderRec() {
     var query = db.from('inspections').select('*').order('inspected_at', {ascending: false});
     if (fv) query = query.eq('vendor', fv);
     if (ft) query = query.eq('tool_name', ft);
+    if (fi) query = query.eq('inspector', fi);
     if (fr) query = query.eq('result', fr);
     var timeout = new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('연결 시간 초과 (10초)')); }, 10000); });
     res = await Promise.race([query, timeout]);
@@ -1229,19 +1234,22 @@ async function loadAndRenderRec() {
   f.forEach(function(r){ tq+=r.quantity; if(r.result==='양호') gq+=r.quantity; else bq+=r.quantity; });
 
   // 필터 업데이트
-  var allRes = await db.from('inspections').select('vendor,tool_name');
+  var allRes = await db.from('inspections').select('vendor,tool_name,inspector');
   if (!allRes.error) {
-    var vs=[], ts=[];
+    var vs=[], ts=[], is=[];
     allRes.data.forEach(function(r){
       if(vs.indexOf(r.vendor)<0) vs.push(r.vendor);
       if(ts.indexOf(r.tool_name)<0) ts.push(r.tool_name);
+      var insp = r.inspector||'미입력';
+      if(is.indexOf(insp)<0) is.push(insp);
     });
-    vs.sort(); ts.sort();
-    var fvEl=document.getElementById('fVdr'), ftEl=document.getElementById('fTool');
-    var cv=fvEl.value, ct=ftEl.value;
+    vs.sort(); ts.sort(); is.sort();
+    var fvEl=document.getElementById('fVdr'), ftEl=document.getElementById('fTool'), fiEl=document.getElementById('fInsp');
+    var cv=fvEl.value, ct=ftEl.value, ci=fiEl.value;
     fvEl.innerHTML='<option value="">전체 업체</option>'+vs.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
     ftEl.innerHTML='<option value="">전체 공도구</option>'+ts.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('');
-    fvEl.value=cv; ftEl.value=ct;
+    fiEl.innerHTML='<option value="">전체 점검자</option>'+is.map(function(i){return '<option value="'+i+'">👤 '+i+'</option>';}).join('');
+    fvEl.value=cv; ftEl.value=ct; fiEl.value=ci;
   }
 
   document.getElementById('sumGrid').innerHTML =
@@ -1787,6 +1795,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('fVdr').addEventListener('change', loadAndRenderRec);
   document.getElementById('fTool').addEventListener('change', loadAndRenderRec);
+  document.getElementById('fInsp').addEventListener('change', loadAndRenderRec);
   document.getElementById('fRes').addEventListener('change', loadAndRenderRec);
   document.getElementById('btnChangePin').addEventListener('click', changePin);
   document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
