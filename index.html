@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>공도구 점검 관리</title>
+<title>현장 점검 관리</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -301,7 +301,7 @@ body.admin-on .admin-only{display:flex;}
 <!-- HEADER -->
 <div id="header">
   <div style="flex:1;">
-    <h1>🔧 공도구 점검 관리</h1>
+    <h1>🏗️ 현장 점검 관리</h1>
     <p>업체 · 공도구 · 수량 · 적합여부</p>
   </div>
   <button id="btnAdmin">⚙️ 관리자</button>
@@ -438,7 +438,7 @@ body.admin-on .admin-only{display:flex;}
     <div id="singleQRWrap" style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:16px;">
       <div style="background:#fff;border-radius:18px;padding:24px 28px;box-shadow:0 2px 12px rgba(0,0,0,.12);text-align:center;width:100%;max-width:320px;">
         <div style="font-size:30px;margin-bottom:8px;">🏗️</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">공도구 점검 관리</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">현장 점검 관리</div>
         <div style="font-size:11px;color:#888;margin-bottom:14px;">QR 스캔 → 공도구 선택 → 점검</div>
         <img id="singleQRImg" src="" alt="QR" style="width:200px;height:200px;display:block;margin:0 auto 14px;border-radius:8px;border:1px solid #eee;">
         <div id="singleQRUrl" style="font-size:10px;color:#aaa;word-break:break-all;margin-bottom:14px;"></div>
@@ -594,7 +594,7 @@ var CAT_TEMPLATES = [
      {t:'폐기물 정리',d:'폐기물 지정 장소 분리 수거'},
      {t:'청결 유지',d:'작업장 청결 상태 유지'}
    ]},
-  {id:'R04',type:'regular',icon:'🏠',name:'가설사무실',color:'#4527A0',desc:'현장 컨테이너·임시 건물',
+  {id:'R04',type:'regular',icon:'🏢',name:'가설사무실',color:'#4527A0',desc:'현장 컨테이너·임시 건물',
    checks:[
      {t:'소화기 비치',d:'소화기 위치·압력 정상 여부'},
      {t:'분전반 관리',d:'분전반 잠금·표지 및 누전차단기 상태'},
@@ -602,7 +602,7 @@ var CAT_TEMPLATES = [
      {t:'안전게시물 게시',d:'법정 안전게시물 부착 여부'},
      {t:'정리정돈',d:'사무실 내부 정리정돈 상태'}
    ]},
-  {id:'R05',type:'regular',icon:'⚠️',name:'개구부',color:'#E65100',desc:'바닥·벽 개구부 안전조치',
+  {id:'R05',type:'regular',icon:'🕳️',name:'개구부',color:'#E65100',desc:'바닥·벽 개구부 안전조치',
    checks:[
      {t:'덮개 설치',d:'개구부 덮개 설치 여부'},
      {t:'고정상태 양호',d:'덮개 고정 볼트·핀 체결 상태'},
@@ -667,7 +667,7 @@ var CAT_TEMPLATES = [
      {t:'가연물 제거',d:'주변 가연물 제거 또는 방호'},
      {t:'작업 후 잔불 확인',d:'작업 종료 후 잔불·발열부 확인'}
    ]},
-  {id:'T03',type:'theme',icon:'🏋️',name:'양중작업',color:'#37474F',desc:'크레인·호이스트 인양',
+  {id:'T03',type:'theme',icon:'🪝',name:'양중작업',color:'#37474F',desc:'크레인·호이스트 인양',
    checks:[
      {t:'작업계획 확인',d:'양중작업 계획서 작성·공유'},
      {t:'줄걸이 양호',d:'와이어·슬링 손상·꼬임 없음'},
@@ -683,7 +683,7 @@ var CAT_TEMPLATES = [
      {t:'유도자 배치',d:'장비 이동 시 유도자 배치'},
      {t:'반경 통제',d:'작업 반경 내 출입 통제'}
    ]},
-  {id:'T05',type:'theme',icon:'🚛',name:'지게차',color:'#1B5E20',desc:'자재 운반·적재 작업',
+  {id:'T05',type:'theme',icon:'📦',name:'지게차',color:'#1B5E20',desc:'자재 운반·적재 작업',
    checks:[
      {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
      {t:'후진경보 정상',d:'후진 경보음 정상 작동'},
@@ -691,7 +691,7 @@ var CAT_TEMPLATES = [
      {t:'자격 확인',d:'지게차 운전 자격증 보유'},
      {t:'유도자 배치',d:'후진·선회 시 유도자 배치'}
    ]},
-  {id:'T06',type:'theme',icon:'🏔️',name:'고소작업대',color:'#4527A0',desc:'차량형·시저·붐형 등',
+  {id:'T06',type:'theme',icon:'🛗',name:'고소작업대',color:'#4527A0',desc:'차량형·시저·붐형 등',
    checks:[
      {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
      {t:'과상승방지장치',d:'과상승 방지장치 작동 확인'},
@@ -699,7 +699,7 @@ var CAT_TEMPLATES = [
      {t:'출입통제',d:'작업 반경 출입 통제 조치'},
      {t:'자격자 운전',d:'고소작업대 운전 자격자 운전'}
    ]},
-  {id:'T07',type:'theme',icon:'🚗',name:'차량계장비',color:'#0277BD',desc:'덤프·믹서·펌프카 등',
+  {id:'T07',type:'theme',icon:'🚚',name:'차량계장비',color:'#0277BD',desc:'덤프·믹서·펌프카 등',
    checks:[
      {t:'일일점검 완료',d:'일일 장비 점검표 작성 완료'},
      {t:'경광등 정상',d:'경광등·전조등·후미등 작동'},
@@ -1450,7 +1450,7 @@ function renderQRGrid() {
 
 function openSingleQRPrint(url, imgSrc) {
   document.getElementById('qpIc').textContent = '🏗️';
-  document.getElementById('qpNm').textContent = '공도구 점검 관리';
+  document.getElementById('qpNm').textContent = '현장 점검 관리';
   document.getElementById('qpCat').textContent = 'QR 스캔 → 공도구 선택 → 점검';
   document.getElementById('qpImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=440x440&margin=12&data=' + encodeURIComponent(url);
   document.getElementById('qpUrl').textContent = url;
